@@ -241,6 +241,13 @@ proxy-groups:
     <<: *BaseUT
   
 # ==================== 规则路由 ====================
+
+geodata-mode: true
+geox-url:
+  geoip: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.metadb"
+geo-auto-update: true
+geo-update-interval: 48
+
 rules: 
   - PROCESS-NAME,cs2.exe,直接连接
   # 拦截规则
