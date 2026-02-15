@@ -4,8 +4,8 @@
 # ==================================
 # 填入订阅链接（每行一个），启动时将自动覆写配置
 URLS="
-订阅链接
-订阅链接
+http://3334678.xyz:18443/sub/403135a8-964f-44fc-82ce-fe13df1abdf8/clash
+https://subscription.riolu.link/RioLU/system/api/v1/client/subscribe?token=d463003e71c80cd9037b7e54ae9c3109
 "
 MEM_LIMIT="256MiB"
 
@@ -57,17 +57,6 @@ download_file() {
 }
 
 check_and_prepare_env() {
-    # --- 1. 检查数据库 ---
-    FILE="geoip.metadb"
-    URL="https://gh-proxy.org/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
-
-    if [ ! -f "$FILE" ]; then
-        echo "🔍 $FILE 不存在，正在下载..."
-        curl -L -f -# -o "$FILE" "$URL"
-        if [ $? -ne 0 ]; then
-            echo "❌ $FILE 下载失败，请检查网络。"
-        fi
-    fi
 
     if [ ! -f "$BIN_NAME" ]; then
         LOCAL_BIN=$(ls | grep -iE "mihomo|clash" | grep -vE "\.(db|dat|mmdb|metadb|yaml|yml|sh|log|gz|txt)$" | head -n 1)
@@ -111,6 +100,18 @@ check_and_prepare_env() {
             if ! download_file "$CONF_NAME" $CONF_URLS; then
                  return 1
             fi
+        fi
+    fi
+    
+    # --- 1. 检查数据库 ---
+    FILE="geoip.metadb"
+    URL="https://gh-proxy.org/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
+
+    if [ ! -f "$FILE" ]; then
+        echo "🔍 $FILE 不存在，正在下载..."
+        curl -L -f -# -o "$FILE" "$URL"
+        if [ $? -ne 0 ]; then
+            echo "❌ $FILE 下载失败，请检查网络。"
         fi
     fi
     
