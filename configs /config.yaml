@@ -242,7 +242,7 @@ proxy-groups:
   
 # ==================== 规则路由 ====================
 
-geodata-mode: true
+geodata-mode: false
 geox-url:
   geoip: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.metadb"
 geo-auto-update: true
