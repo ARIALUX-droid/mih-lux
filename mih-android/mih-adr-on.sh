@@ -4,8 +4,8 @@
 # ==================================
 # 填入订阅链接（每行一个），启动时将自动覆写配置
 URLS="
-http://3334678.xyz:18443/sub/403135a8-964f-44fc-82ce-fe13df1abdf8/clash
-https://subscription.riolu.link/RioLU/system/api/v1/client/subscribe?token=d463003e71c80cd9037b7e54ae9c3109
+订阅链接
+订阅链接
 "
 MEM_LIMIT="256MiB"
 
