@@ -151,6 +151,7 @@ dns:
     - rule-set:Private
     - rule-set:China
     - rule-set:games-cn
+    - rule-set:GoogleFCM
     - +.miwifi.com
     - +.docker.io
     - +.market.xiaomi.com
