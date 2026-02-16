@@ -127,10 +127,10 @@ tun:
   auto-redirect: true
   auto-detect-interface: true
   exclude-package:
-  #  - com.tencent.mm           # 微信
-  # - com.tencent.mobileqq     # QQ
-  # - com.eg.android.AlipayGphone # 支付宝
-  # - com.unionpay             # 云闪付
+   - com.tencent.mm           # 微信
+   - com.tencent.mobileqq     # QQ
+   - com.eg.android.AlipayGphone # 支付宝
+   - com.unionpay             # 云闪付
    - com.miui.packageinstaller #小米应用包安装程序
     
 # DNS配置
