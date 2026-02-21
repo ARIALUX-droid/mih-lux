@@ -46,14 +46,14 @@ SelectDC: &SelectDC   {type: select, proxies: [直接连接, 一键连, 优, 故
 proxy-providers:
   优质服务商:
     <<: *BaseProvider
-    url: ""
+    url: "订阅"
     path: ./providers/优质服务商.yaml
     override:
       additional-prefix: '[优] '
 
   备用服务商:
     <<: *BaseProvider
-    url: ""
+    url: "订阅"
     path: ./providers/备用服务商.yaml  
     override:
       additional-prefix: '[备] '
@@ -246,7 +246,7 @@ proxy-groups:
 rules: 
   - PROCESS-NAME,cs2.exe,直接连接
   # 拦截规则
-  - RULE-SET,anti-ad,广告
+  - RULE-SET,AWAvenue,广告
   - AND,((DST-PORT,443),(NETWORK,UDP),(NOT,((GEOIP,CN)))),REJECT  # 阻止海外 QUIC
   
   #Googleplay下载用
@@ -287,10 +287,10 @@ BehaviorIP: &BehaviorIP
 
 # 规则集配置
 rule-providers:
-  anti-ad:
+  AWAvenue:
     <<: *BehaviorDN
-    path: ./rules/anti-ad.mrs
-    url: "https://anti-ad.net/mihomo.mrs"
+    path: ./rules/AWAvenue.mrs
+    url: "https://gcore.jsdelivr.net/gh/TG-Twilight/AWAvenue-Ads-Rule@main/Filters/AWAvenue-Ads-Rule-Clash.mrs"
 
   Private:
     <<: *BehaviorDN
