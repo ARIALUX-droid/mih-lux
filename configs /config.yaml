@@ -160,7 +160,7 @@ dns:
 # ==================== 代理策略组 ====================
 proxy-groups:
   - name: 一键连
-    icon: "https://github.com/666OS/YYDS/raw/main/mihomo/image/mihomo.png"
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/mihomo.png"
     <<: *SelectAL
 
   - name: 故障转移
@@ -169,37 +169,37 @@ proxy-groups:
     <<: *BaseFB
 
   - name: 人工智能
-    icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/AI.png"
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/AI.png"
     <<: *SelectUS
 
   - name: Emby服
-    icon: "https://git.imee.me/https://github.com/Koolson/Qure/raw/master/IconSet/Color/Emby.png"
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Emby.png"
     <<: *SelectUS
 
   - name: 国内流量
-    icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/China.png"
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/China.png"
     <<: *SelectDC
 
   - name: 手动选择
-    icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/Clubhouse.png"
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Clubhouse.png"
     type: select
     include-all: true
     filter: *FilterAL
 
   - name: 广告
-    icon: "https://git.imee.me/https://github.com/Koolson/Qure/raw/master/IconSet/Color/anti-ad.png"
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/anti-ad.png"
     hidden: true
     type: select
     proxies: [REJECT-DROP, REJECT, PASS]
     
   - name: 直接连接
-    icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/Direct.png"
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Direct.png"
     type: select
     proxies: [DIRECT]
     hidden: true
 
   - name: 优
-    icon: "https://git.imee.me/https://github.com/Koolson/Qure/raw/master/IconSet/Color/Server.png"
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Server.png"
     use: [优质服务商]
     filter: *FilterAL
     hidden: true
