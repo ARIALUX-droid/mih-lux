@@ -118,7 +118,7 @@ sniffer:
 # TUN模式配置
 tun:
   enable: true
-  stack: gvisor
+  stack: mixed
   device: Meta
   dns-hijack:
     - "any:53"
@@ -126,6 +126,9 @@ tun:
   auto-route: true
   auto-redirect: true
   auto-detect-interface: true
+  #Windows 进程黑名单（仅 stack: mixed 生效）
+  bypass:
+    - cs2.exe
   exclude-package:
    - com.tencent.mm           # 微信
    - com.tencent.mobileqq     # QQ
@@ -243,7 +246,6 @@ proxy-groups:
   
 # ==================== 规则路由 ====================
 rules: 
-  - PROCESS-NAME,cs2.exe,直接连接
   # 拦截规则
   - RULE-SET,anti-ad,广告
   - AND,((DST-PORT,443),(NETWORK,UDP),(NOT,((GEOIP,CN)))),REJECT  # 阻止海外 QUIC
