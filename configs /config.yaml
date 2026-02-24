@@ -243,6 +243,7 @@ proxy-groups:
   
 # ==================== 规则路由 ====================
 rules: 
+  - PROCESS-NAME,cs2.exe,直接连接
   # 拦截规则
   - RULE-SET,anti-ad,广告
   - AND,((DST-PORT,443),(NETWORK,UDP),(NOT,((GEOIP,CN)))),REJECT  # 阻止海外 QUIC
