@@ -249,7 +249,7 @@ rules:
   - AND,((DST-PORT,443),(NETWORK,UDP),(NOT,((GEOIP,CN)))),REJECT  # 阻止海外 QUIC
 
   # 域名规则
-  - RULE-SET,MyDirect,直接连接
+  - RULE-SET,MyDirect,直接连接 #自用直连规则
   - RULE-SET,games-cn,直接连接
   - RULE-SET,Private,直接连接
   - RULE-SET,AI,人工智能
@@ -287,7 +287,7 @@ rule-providers:
   MyDirect:
     <<: *BehaviorDN
     path: ./rules/MyDirect.mrs
-    url: "https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/rule/MyDirect/MyDirect.mrs"
+    url: "https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/rule/MyDirect.mrs"
 
   Private:
     <<: *BehaviorDN
