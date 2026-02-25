@@ -5,14 +5,17 @@ setlocal enabledelayedexpansion
 :: ============================================================
 :: 1. 用户配置区 (每行一个订阅)
 :: ============================================================
-set "URLS=链接1"
+sset "URLS=链接1"
 set "URLS=!URLS!|链接2"
 set "URLS=!URLS!|链接3"
 set "URLS=!URLS!|链接4"
 set "URLS=!URLS!|链接5"
 
 :: TUN模式开关：1开启(使用TUN)，0关闭(使用系统代理)
-set "TUN_SWITCH=1"
+set TUN_SWITCH=1
+
+:: 开机自启开关：1开启(注册系统任务)，0关闭(移除系统任务)
+set AUTO_START_SWITCH=1
 
 :: ============================================================
 :: 2. 环境 definition
@@ -167,29 +170,48 @@ if not exist "%DB_NAME%" (
 )
 
 :check_task
-:: F. 系统级任务注册
+:: ============================================================
+:: F. 系统级任务管理 (开机自启同步)
+:: ============================================================
 set "CURRENT_SCRIPT_PATH=%~f0"
-set "NEED_UPDATE=0"
 
-schtasks /query /tn "%TASK_NAME%" >nul 2>&1
-if %errorlevel% neq 0 (
-    set "NEED_UPDATE=1"
-    call :_LOG "INFO" "任务不存在，准备注册..."
-) else (
-    for /f "usebackq delims=" %%p in (`powershell -Command "(Get-ScheduledTask -TaskName '%TASK_NAME%').Actions.Execute"`) do (
-        if /i "%%p" neq "!CURRENT_SCRIPT_PATH!" (
-            set "NEED_UPDATE=1"
-            call :_LOG "WARN" "检测到路径变更，准备更新系统任务..."
+if "!AUTO_START_SWITCH!"=="1" (
+    :: --- 开启逻辑：检查并注册/更新 ---
+    set "NEED_UPDATE=0"
+    schtasks /query /tn "%TASK_NAME%" >nul 2>&1
+    if %errorlevel% neq 0 (
+        set "NEED_UPDATE=1"
+        call :_LOG "INFO" "自动启动：任务不存在，准备注册..."
+    ) else (
+        for /f "usebackq delims=" %%p in (`powershell -Command "(Get-ScheduledTask -TaskName '%TASK_NAME%').Actions.Execute"`) do (
+            if /i "%%p" neq "!CURRENT_SCRIPT_PATH!" (
+                set "NEED_UPDATE=1"
+                call :_LOG "WARN" "自动启动：检测到路径变更，准备更新..."
+            )
         )
     )
-)
 
-if "!NEED_UPDATE!"=="1" (
-    schtasks /create /tn "%TASK_NAME%" /tr "'!CURRENT_SCRIPT_PATH!' /start" /sc onstart /ru SYSTEM /rl highest /f >nul
-    if %errorlevel% equ 0 (
-        call :_LOG "INFO" "系统级任务注册/更新成功。"
+    if "!NEED_UPDATE!"=="1" (
+        schtasks /create /tn "%TASK_NAME%" /tr "'!CURRENT_SCRIPT_PATH!' /start" /sc onstart /ru SYSTEM /rl highest /f >nul
+        if %errorlevel% equ 0 (
+            call :_LOG "INFO" "✅ 系统级自启任务已启用。"
+        ) else (
+            call :_LOG "ERR" "❌ 自启任务注册失败，请检查权限。"
+        )
     ) else (
-        call :_LOG "ERR" "系统级任务注册失败，请检查权限。"
+        call :_LOG "INFO" "自动启动：配置已是最新。"
+    )
+) else (
+    :: --- 关闭逻辑：检测并移除 ---
+    schtasks /query /tn "%TASK_NAME%" >nul 2>&1
+    if %errorlevel% equ 0 (
+        call :_LOG "WARN" "自动启动：正在根据配置移除系统任务..."
+        schtasks /delete /tn "%TASK_NAME%" /f >nul
+        if %errorlevel% equ 0 (
+            call :_LOG "INFO" "✅ 系统级自启任务已移除。"
+        )
+    ) else (
+        call :_LOG "INFO" "自动启动：当前已处于关闭状态。"
     )
 )
 
