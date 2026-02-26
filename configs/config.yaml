@@ -282,7 +282,7 @@ rule-providers:
   anti-ad:
     <<: *BehaviorDN
     path: ./rules/anti-ad.mrs
-    url: "https://anti-ad.net/mihomo.mrs"
+    url: "https://gcore.jsdelivr.net/gh/TG-Twilight/AWAvenue-Ads-Rule@main/Filters/AWAvenue-Ads-Rule-Clash.mrs"
 
   MyDirect:
     <<: *BehaviorDN
