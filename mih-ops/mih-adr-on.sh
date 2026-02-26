@@ -8,10 +8,13 @@
 URLS="
 订阅1
 订阅2
-订阅3
 "
+
 # 自启动开关：1开启，0关闭
 AUTO_START=1
+
+# 面板下载：1-执行下载安装，0-跳过（安装成功后会自动变为0）
+INSTALL_PANEL=0
 
 MEM_LIMIT="256MiB"
 
@@ -22,11 +25,12 @@ BIN_NAME="mihomo"
 CONF_NAME="config.yaml"
 LOG_NAME="clash.log"
 OFF_SCRIPT="mih-adr-off.sh"
+PANEL_PKG="top.zashboard.toapp.app"
 
 #mihomo配置文件下载地址
 CONF_URLS="
-https://cdn.jsdelivr.net/gh/ARIALUX-droid/mih-lux@main/configs/config.yaml
-https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/configs/config.yaml
+https://gh-proxy.org/https://github.com/ARIALUX-droid/mih-lux/raw/main/configs/config.yaml
+https://github.com/ARIALUX-droid/mih-lux/raw/main/configs/config.yaml
 "
 
 #停止脚本下载地址
@@ -34,6 +38,13 @@ OFF_URLS="
 https://gh-proxy.org/https://github.com/ARIALUX-droid/mih-lux/raw/main/mih-ops/mih-adr-off.sh
 https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/mih-ops/mih-adr-off.sh
 "
+
+# 面板下载链接
+PANEL_URLS="
+https://gh-proxy.org/https://github.com/ARIALUX-droid/mih-lux/raw/main/bin/android/app/zashboard.apk
+https://github.com/ARIALUX-droid/mih-lux/raw/main/bin/android/app/zashboard.apk
+"
+APK_NAME="zashboard_tmp.apk"
 
 WORK_DIR=$(cd "$(dirname "$0")"; pwd)
 cd "$WORK_DIR" || exit 1
@@ -49,7 +60,6 @@ if [ "$AUTO_START" -eq 1 ]; then
         [ ! -d "$SERVICE_D" ] && mkdir -p "$SERVICE_D" && chmod 755 "$SERVICE_D"
         cat <<EOF > "$TARGET_CONF"
 #!/system/bin/sh
-# Mihomo Auto Start Script
 sleep 10
 /system/bin/sh "$SELF_PATH"
 EOF
@@ -65,7 +75,49 @@ fi
 # ==========================================
 # 3. 功能函数
 # ==========================================
+# --- 【面板下载】 ---
+run_install_panel() {
+    if [ "$INSTALL_PANEL" -ne 1 ]; then
+        return 0
+    fi
 
+    echo "🚀 开始处理面板安装任务..."
+    
+    # 下载逻辑
+    for url in $PANEL_URLS; do
+        echo "⬇️ 尝试下载: $url"
+        curl -L -f -# -o "$WORK_DIR/$APK_NAME" "$url"
+        if [ -s "$WORK_DIR/$APK_NAME" ]; then
+            echo "✅ 下载成功。"
+            break
+        fi
+        rm -f "$WORK_DIR/$APK_NAME"
+    done
+
+    if [ -s "$WORK_DIR/$APK_NAME" ]; then
+        INSTALL_SUCCESS=0
+        echo "📦 正在尝试增强型静默安装..."
+        LD_LIBRARY_PATH=/system/lib64:/system/lib pm install -r -t -d "$WORK_DIR/$APK_NAME" > /dev/null 2>&1
+        
+        if pm list packages | grep -q "$PANEL_PKG"; then
+            INSTALL_SUCCESS=1
+        else
+            echo "⚠️ 方法 A 失败，尝试方法 B (管道流安装)..."
+            cat "$WORK_DIR/$APK_NAME" | pm install -S $(stat -c%s "$WORK_DIR/$APK_NAME")
+            [ $? -eq 0 ] && INSTALL_SUCCESS=1
+        fi
+
+        if [ "$INSTALL_SUCCESS" -eq 1 ]; then
+            echo "✅ 面板安装成功。"
+            rm -f "$WORK_DIR/$APK_NAME"
+            sed -i "s/^INSTALL_PANEL=1/INSTALL_PANEL=0/" "$SELF_PATH"
+            echo "🔒 已将脚本开关重置为 0。"
+        else
+            echo "❌ 自动安装被系统拦截。请手动安装: $WORK_DIR/$APK_NAME"
+        fi
+    fi
+}
+# ------ ------ ------ ------ ------
 download_file() {
     local target_name=$1
     shift
@@ -79,6 +131,8 @@ download_file() {
 }
 
 check_and_prepare_env() {
+
+    run_install_panel    
 
     if [ ! -f "$BIN_NAME" ]; then
         LOCAL_BIN=$(ls | grep -iE "mihomo|clash" | grep -vE "\.(db|dat|mmdb|metadb|yaml|yml|sh|log|gz|txt)$" | head -n 1)

@@ -5,11 +5,10 @@ setlocal enabledelayedexpansion
 :: ============================================================
 :: 1. 用户配置区 (每行一个订阅)
 :: ============================================================
-sset "URLS=链接1"
-set "URLS=!URLS!|链接2"
-set "URLS=!URLS!|链接3"
-set "URLS=!URLS!|链接4"
-set "URLS=!URLS!|链接5"
+set "URLS=订阅1"
+set "URLS=!URLS!|订阅2"
+set "URLS=!URLS!|订阅3"
+set "URLS=!URLS!|订阅4"
 
 :: TUN模式开关：1开启(使用TUN)，0关闭(使用系统代理)
 set TUN_SWITCH=1
@@ -31,8 +30,8 @@ set "DB_NAME=geoip.metadb"
 set "REPO=MetaCubeX/mihomo"
 set "DB_URL_1=https://gh-proxy.org/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
 set "DB_URL_2=https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
-set "CONF_URL_1=https://cdn.jsdelivr.net/gh/ARIALUX-droid/mih-lux@main/configs/config.yaml"
-set "CONF_URL_2=https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/configs/config.yaml"
+set "CONF_URL_1=https://gh-proxy.org/https://github.com/ARIALUX-droid/mih-lux/raw/main/configs/config.yaml"
+set "CONF_URL_2=https://github.com/ARIALUX-droid/mih-lux/raw/main/configs/config.yaml"
 
 goto :main
 
