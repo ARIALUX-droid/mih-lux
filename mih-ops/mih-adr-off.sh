@@ -1,5 +1,6 @@
 #!/system/bin/sh
 # IDENTIFIER: ARIALUX-droid/mih-lux/mih-adr-off
+# 以上是唯一特征码，不要删除
 
 WORK_DIR=$(cd "$(dirname "$0")"; pwd)
 SELF_PID=$$
@@ -15,7 +16,7 @@ if [ -f "$PID_FILE" ]; then
     rm -f "$PID_FILE"
 fi
 
-PIDS=$(pgrep -f "mihomo|clash" | grep -v "$SELF_PID")
+PIDS=$(pgrep "mihomo" | grep -v "$SELF_PID")
 if [ -n "$PIDS" ]; then
     echo "$PIDS" | xargs kill -9 2>/dev/null
 fi
@@ -39,12 +40,6 @@ for dev in "Meta" "utun" "tun0" "clash"; do
     fi
 done
 
-
-while ip rule show | grep -q "198.18"; do
-    ip rule del from all lookup main 2>/dev/null || break 
-    ip rule pref 17999 del 2>/dev/null 
-done
-
 # 4. 系统环境参数回归
 settings put global http_proxy :0
 settings put global global_http_proxy_host ""
@@ -52,4 +47,4 @@ settings put global global_http_proxy_port "0"
 
 ndc resolver flushdefaultif 2>/dev/null
 
-echo "✅ 代理以关闭。"
+echo "✅ 代理已断开。"
