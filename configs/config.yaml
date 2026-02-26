@@ -245,7 +245,7 @@ proxy-groups:
 rules: 
   - PROCESS-NAME,cs2.exe,直接连接
   # 拦截规则
-  - RULE-SET,anti-ad,广告
+  - RULE-SET,AWAvenue,广告
   - AND,((DST-PORT,443),(NETWORK,UDP),(NOT,((GEOIP,CN)))),REJECT  # 阻止海外 QUIC
 
   # 域名规则
@@ -279,7 +279,7 @@ BehaviorIP: &BehaviorIP
 
 # 规则集配置
 rule-providers:
-  anti-ad:
+  AWAvenue:
     <<: *BehaviorDN
     path: ./rules/anti-ad.mrs
     url: "https://gcore.jsdelivr.net/gh/TG-Twilight/AWAvenue-Ads-Rule@main/Filters/AWAvenue-Ads-Rule-Clash.mrs"
