@@ -7,11 +7,18 @@
 # 填入订阅链接（每行一个），启动时将自动覆写配置
 URLS="
 订阅1
-订阅2
+订阅3
+订阅3
 "
+
+# 配置模式：1-通用配置（666大佬OneTouch），2-自用配置
+CONFIG_MODE=2
 
 # 自启动开关：1开启，0关闭
 AUTO_START=1
+
+#1开启加速链接，0直接使用原链接
+ENABLE_PROXY=1
 
 # 面板下载：1-执行下载安装，0-跳过（安装成功后会自动变为0）
 INSTALL_PANEL=0
@@ -25,25 +32,21 @@ BIN_NAME="mihomo"
 CONF_NAME="config.yaml"
 LOG_NAME="clash.log"
 OFF_SCRIPT="mih-adr-off.sh"
+GEOIP_NAME="geoip.metadb"
 PANEL_PKG="top.zashboard.toapp.app"
 
 #mihomo配置文件下载地址
-CONF_URLS="
-https://gh-proxy.org/https://github.com/ARIALUX-droid/mih-lux/raw/main/configs/config.yaml
-https://github.com/ARIALUX-droid/mih-lux/raw/main/configs/config.yaml
-"
-
+#通用配置（666大佬OneTouch）
+COMMON_CONF_URL="https://raw.githubusercontent.com/666OS/YYDS/main/mihomo/config/OneTouch.yaml"
+#自用配置 geoip.metadb
+CONF_URL="https://github.com/ARIALUX-droid/mih-lux/raw/main/configs/config.yaml"  
+# 数据库下载地址
+GEOIP_URL="https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
 #停止脚本下载地址
-OFF_URLS="
-https://gh-proxy.org/https://github.com/ARIALUX-droid/mih-lux/raw/main/mih-ops/mih-adr-off.sh
-https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/mih-ops/mih-adr-off.sh
-"
-
+OFF_URL="https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/mih-ops/mih-adr-off.sh"
 # 面板下载链接
-PANEL_URLS="
-https://gh-proxy.org/https://github.com/ARIALUX-droid/mih-lux/raw/main/bin/android/app/zashboard.apk
-https://github.com/ARIALUX-droid/mih-lux/raw/main/bin/android/app/zashboard.apk
-"
+PANEL_URL="https://github.com/ARIALUX-droid/mih-lux/raw/main/bin/android/app/zashboard.apk"
+
 APK_NAME="zashboard_tmp.apk"
 
 WORK_DIR=$(cd "$(dirname "$0")"; pwd)
@@ -75,6 +78,17 @@ fi
 # ==========================================
 # 3. 功能函数
 # ==========================================
+# 获取处理后的URL函数
+get_real_url() {
+    local raw_url=$1
+    if [ "$ENABLE_PROXY" -eq 1 ]; then
+    #可自定义修改加速链接
+        echo "https://gh-proxy.org/$raw_url"
+    else
+        echo "$raw_url"
+    fi
+}
+
 # --- 【面板下载】 ---
 run_install_panel() {
     if [ "$INSTALL_PANEL" -ne 1 ]; then
@@ -83,6 +97,11 @@ run_install_panel() {
 
     echo "🚀 开始处理面板安装任务..."
     
+# 动态获取下载链接
+    local final_panel_url=$(get_real_url "$PANEL_URL")
+    echo "⬇️ 尝试下载: $final_panel_url"
+    curl -L -f -# -o "$WORK_DIR/$APK_NAME" "$final_panel_url"
+
     # 下载逻辑
     for url in $PANEL_URLS; do
         echo "⬇️ 尝试下载: $url"
@@ -153,11 +172,12 @@ check_and_prepare_env() {
 
         GZ_NAME="mihomo-android-arm64-v8-${LATEST_TAG}.gz"
         CORE_PATH="releases/download/$LATEST_TAG/$GZ_NAME"
-        CORE_URLS="
-            https://gh-proxy.org/https://github.com/$REPO/$CORE_PATH
-            https://github.com/$REPO/$CORE_PATH
-        "
-        if download_file "$GZ_NAME" $CORE_URLS; then
+
+        # 内核下载地址动态转换
+        local raw_core_url="https://github.com/$REPO/$CORE_PATH"
+        local final_core_url=$(get_real_url "$raw_core_url")
+        if download_file "$GZ_NAME" "$final_core_url" "$raw_core_url"; then
+
             gunzip -c "$GZ_NAME" > "$BIN_NAME"
             rm -f "$GZ_NAME"
             chmod +x "$BIN_NAME"
@@ -174,29 +194,34 @@ check_and_prepare_env() {
             mv "$LOCAL_YAML" "$CONF_NAME"
         else
             echo "🔍 无本地配置，准备从云端下载默认模板..."
-            if ! download_file "$CONF_NAME" $CONF_URLS; then
+
+          # 配置文件下载地址动态转换
+            if [ "$CONFIG_MODE" -eq 1 ]; then
+                SELECTED_URL="$COMMON_CONF_URL"
+                echo "使用通用配置模式"
+            else
+                SELECTED_URL="$CONF_URL"
+                echo "使用自用配置模式"
+            fi
+            if ! download_file "$CONF_NAME" "$(get_real_url "$SELECTED_URL")" "$SELECTED_URL"; then
                  return 1
             fi
         fi
     fi
 
     # --- 1. 检查数据库 ---
-    FILE="geoip.metadb"
-    URL="https://gh-proxy.org/https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
-
-    if [ ! -f "$FILE" ]; then
-        echo "🔍 $FILE 不存在，正在下载..."
-        curl -L -f -# -o "$FILE" "$URL"
-        if [ $? -ne 0 ]; then
-            echo "❌ $FILE 下载失败，请检查网络。"
-        fi
+ # 数据库下载
+    if [ ! -f "$GEOIP_NAME" ]; then
+        echo "🔍 $GEOIP_NAME 不存在，正在下载..."
+        download_file "$GEOIP_NAME" "$(get_real_url "$GEOIP_URL")" "$GEOIP_URL"
     fi
     
 # --- 停止脚本检查与下载 ---
     if [ ! -f "$OFF_SCRIPT" ]; then
         echo "🔍 未找到停止脚本 $OFF_SCRIPT，正在下载..."
-        if ! download_file "$OFF_SCRIPT" $OFF_URLS; then
-            echo "⚠️ 停止脚本下载失败，但不影响核心启动。"
+       # 停止脚本下载地址动态转换
+        if ! download_file "$OFF_SCRIPT" "$(get_real_url "$OFF_URL")" "$OFF_URL"; then
+              echo "⚠️ 停止脚本下载失败，但不影响核心启动。"
         else
             chmod +x "$OFF_SCRIPT"
         fi
