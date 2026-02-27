@@ -5,14 +5,15 @@
 # 1. 用户配置区
 # ==================================
 # 填入订阅链接（每行一个），启动时将自动覆写配置
+#仅接受 http(s)，其他无效不会覆写
 URLS="
 订阅1
-订阅3
+订阅2
 订阅3
 "
 
 # 配置模式：1-通用配置（666大佬OneTouch），2-自用配置
-CONFIG_MODE=2
+CONFIG_MODE=1
 
 # 自启动开关：1开启，0关闭
 AUTO_START=1
@@ -55,6 +56,28 @@ cd "$WORK_DIR" || exit 1
 SELF_PATH=$(realpath "$0")
 SERVICE_D="/data/adb/service.d"
 TARGET_CONF="$SERVICE_D/mihomo_start.sh"
+
+# ==================================
+# 新增内容：执行目录安全检查、自动迁移并立即执行
+case "$WORK_DIR" in
+    /data/local/tmp*|/data/adb*)
+        # 处于允许的目录及其子目录下，跳过检测
+        ;;
+    *)
+        # 不在允许范围内，执行迁移并后续执行
+        NEW_HOME="/data/adb/mih-lux"
+        NEW_PATH="$NEW_HOME/mih-adr-on.sh"
+        echo "⚠️ 当前目录 $WORK_DIR 不在允许范围内。
+        推荐放在/data/adb/中执行"
+        echo "🚚 正在迁移脚本至 $NEW_HOME 并启动..."
+        [ ! -d "$NEW_HOME" ] && mkdir -p "$NEW_HOME" && chmod 755 "$NEW_HOME"
+        mv "$SELF_PATH" "$NEW_PATH"
+        chmod +x "$NEW_PATH"
+        # 迁移后立即替换当前进程并执行新路径下的脚本
+        exec /system/bin/sh "$NEW_PATH"
+        ;;
+esac
+# ==================================
 
 # --- 自启动逻辑处理 ---
 if [ "$AUTO_START" -eq 1 ]; then
@@ -136,7 +159,7 @@ run_install_panel() {
         fi
     fi
 }
-# ------ ------ ------ ------ ------
+# ==================================
 download_file() {
     local target_name=$1
     shift
@@ -262,7 +285,10 @@ if [ -n "$START_LINE" ]; then
         [ -z "$1" ] && break
         REAL_LINE=$((START_LINE + rel_line - 1))
         TARGET_URL="$1"
-        sed -i "${REAL_LINE}s#\(url:[[:space:]]*\)['\" ]*[^,'\" }]*['\" ]*#\1\"$TARGET_URL\"#" "$CONF_NAME"
+        # URL 合法性校验，仅接受 http(s) 
+        if echo "$TARGET_URL" | grep -iqE "^(https?)://"; then
+            sed -i "${REAL_LINE}s#\(url:[[:space:]]*\)['\" ]*[^,'\" }]*['\" ]*#\1\"$TARGET_URL\"#" "$CONF_NAME"
+        fi
         shift # 移动到下一个 URL
     done
 fi
