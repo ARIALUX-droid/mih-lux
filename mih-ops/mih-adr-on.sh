@@ -5,7 +5,6 @@
 # 1. 用户配置区
 # ==================================
 # 填入订阅链接（每行一个），启动时将自动覆写配置
-#仅接受 http(s)，其他无效不会覆写
 URLS="
 订阅1
 订阅2
@@ -18,6 +17,9 @@ CONFIG_MODE=1
 # 自启动开关：1开启，0关闭
 AUTO_START=1
 
+# 内核版本选择：1-稳定版(Release)，2-预览版(Alpha)，3-智能修改版(Smart Alpha)
+CORE_TYPE=1
+
 #1开启加速链接，0直接使用原链接
 ENABLE_PROXY=1
 
@@ -29,11 +31,13 @@ MEM_LIMIT="256MiB"
 # 2. 系统变量定义
 # ==========================================
 REPO="MetaCubeX/mihomo"
+SMART_REPO="vernesong/mihomo"
 BIN_NAME="mihomo"
 CONF_NAME="config.yaml"
 LOG_NAME="clash.log"
 OFF_SCRIPT="mih-adr-off.sh"
 GEOIP_NAME="geoip.metadb"
+MODEL_NAME="Model.bin"
 PANEL_PKG="top.zashboard.toapp.app"
 
 #mihomo配置文件下载地址
@@ -47,6 +51,8 @@ GEOIP_URL="https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/
 OFF_URL="https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/mih-ops/mih-adr-off.sh"
 # 面板下载链接
 PANEL_URL="https://github.com/ARIALUX-droid/mih-lux/raw/main/bin/android/app/zashboard.apk"
+# LightGBM Model-large.bin
+MODEL_URL="https://github.com/vernesong/mihomo/releases/download/LightGBM-Model/Model-large.bin"
 
 APK_NAME="zashboard_tmp.apk"
 
@@ -159,7 +165,7 @@ run_install_panel() {
         fi
     fi
 }
-# ==================================
+# ==============内核下载====================
 download_file() {
     local target_name=$1
     shift
@@ -186,21 +192,37 @@ check_and_prepare_env() {
             chmod +x "$BIN_NAME"
         fi
     fi
-
+# ================版本选择==================
     if [ ! -f "$BIN_NAME" ]; then
-        echo "🔍 未找到内核，正在下载..."
-        # 顺序已调整：仅在本地确无文件后才执行下方联网指令
-        LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-        [ -z "$LATEST_TAG" ] && return 1
+        echo "🔍 未找到内核，正在根据配置下载对应版本..."
+        
+        if [ "$CORE_TYPE" -eq 1 ]; then
+            LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+            [ -z "$LATEST_TAG" ] && return 1
+            GZ_NAME="mihomo-android-arm64-v8-${LATEST_TAG}.gz"
+            raw_core_url="https://github.com/$REPO/releases/download/$LATEST_TAG/$GZ_NAME"
+            
+        elif [ "$CORE_TYPE" -eq 2 ]; then
+            GZ_NAME=$(curl -s "https://api.github.com/repos/$REPO/releases/tags/Prerelease-Alpha" | grep '"name":' | grep -oE 'mihomo-android-arm64-v8-alpha-[a-z0-9]+\.gz' | head -n 1)
+            [ -z "$GZ_NAME" ] && return 1
+            raw_core_url="https://github.com/$REPO/releases/download/Prerelease-Alpha/$GZ_NAME"
+            
+        elif [ "$CORE_TYPE" -eq 3 ]; then
+            GZ_NAME=$(curl -s "https://api.github.com/repos/$SMART_REPO/releases/tags/Prerelease-Alpha" | grep '"name":' | grep -oE 'mihomo-android-arm64-v8-alpha-smart-[a-z0-9]+\.gz' | head -n 1)
+            [ -z "$GZ_NAME" ] && return 1
+            raw_core_url="https://github.com/$SMART_REPO/releases/download/Prerelease-Alpha/$GZ_NAME"
+            
+            if [ ! -f "$MODEL_NAME" ]; then
+                echo "🔍 CORE_TYPE=3，正在自动下载环境依赖 $MODEL_NAME..."
+                download_file "$MODEL_NAME" "$(get_real_url "$MODEL_URL")" "$MODEL_URL"
+            fi
+        else
+            echo "❌ 未知的 CORE_TYPE=$CORE_TYPE，无法下载内核。"
+            return 1
+        fi
 
-        GZ_NAME="mihomo-android-arm64-v8-${LATEST_TAG}.gz"
-        CORE_PATH="releases/download/$LATEST_TAG/$GZ_NAME"
-
-        # 内核下载地址动态转换
-        local raw_core_url="https://github.com/$REPO/$CORE_PATH"
         local final_core_url=$(get_real_url "$raw_core_url")
         if download_file "$GZ_NAME" "$final_core_url" "$raw_core_url"; then
-
             gunzip -c "$GZ_NAME" > "$BIN_NAME"
             rm -f "$GZ_NAME"
             chmod +x "$BIN_NAME"
@@ -208,7 +230,7 @@ check_and_prepare_env() {
             return 1
         fi
     fi
-
+# ==================================
     # --- 3. 配置文件智能检测 ---
     if [ ! -f "$CONF_NAME" ]; then
         LOCAL_YAML=$(ls -t *.yaml 2>/dev/null | grep -vx "$CONF_NAME" | head -n 1)
