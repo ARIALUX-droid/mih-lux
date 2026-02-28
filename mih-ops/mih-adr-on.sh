@@ -22,7 +22,7 @@ AUTO_START=1
 ENABLE_PROXY=1
 
 # 面板下载：1-执行下载安装，0-跳过（安装成功后会自动变为0）
-INSTALL_PANEL=0
+INSTALL_PANEL=1
 
 MEM_LIMIT="256MiB"
 
@@ -58,7 +58,7 @@ SERVICE_D="/data/adb/service.d"
 TARGET_CONF="$SERVICE_D/mihomo_start.sh"
 
 # ==================================
-# 新增内容：执行目录安全检查、自动迁移并立即执行
+# 执行目录安全检查、自动迁移并立即执行
 case "$WORK_DIR" in
     /data/local/tmp*|/data/adb*)
         # 处于允许的目录及其子目录下，跳过检测
@@ -257,7 +257,7 @@ check_and_prepare_env() {
 # 4. 主执行流程
 # ==========================================
 
-echo "启动中"
+#echo "启动中"
 
 if ! check_and_prepare_env; then
     echo "❌ 环境修复失败，请检查网络。"
@@ -269,49 +269,163 @@ chmod 777 "$BIN_NAME"
 chown root:root "$BIN_NAME" 2>/dev/null 
 
 # 自动处理配置注入
-sed -i '/^tun:/,/enable:/ s/enable: .*/enable: true/' "$CONF_NAME"
-
-sed -i '/pid-file:/d' "$CONF_NAME"
-sed -i "/mixed-port:/a pid-file: $WORK_DIR/mihomo.pid" "$CONF_NAME"
-
-
-START_LINE=$(grep -n "proxy-providers:" "$CONF_NAME" | cut -d: -f1)
-if [ -n "$START_LINE" ]; then
-    URL_REL_LINES=$(sed -n "$START_LINE,\$p" "$CONF_NAME" | grep -n "url:" | grep -v "#" | cut -d: -f1)
-
-    set -- $URLS
-
-    for rel_line in $URL_REL_LINES; do
-        [ -z "$1" ] && break
-        REAL_LINE=$((START_LINE + rel_line - 1))
-        TARGET_URL="$1"
-        # URL 合法性校验，仅接受 http(s) 
-        if echo "$TARGET_URL" | grep -iqE "^(https?)://"; then
-            sed -i "${REAL_LINE}s#\(url:[[:space:]]*\)['\" ]*[^,'\" }]*['\" ]*#\1\"$TARGET_URL\"#" "$CONF_NAME"
-        fi
-        shift # 移动到下一个 URL
-    done
+# =============tun覆写================
+# 锁定 tun 模块的作用域
+TUN_START=$(grep -n "^tun:" "$CONF_NAME" | head -n 1 | cut -d: -f1)
+if [ -z "$TUN_START" ]; then
+    echo "🔧 配置文件缺少 tun 模块，正在注入默认 tun 配置..."
+    sed -i '1i \
+tun:\
+  enable: true\
+  stack: gvisor\
+  device: Meta\
+  udp-timeout: 300\
+  auto-route: true\
+  auto-redirect: true\
+  auto-detect-interface: true\
+  strict-route: true\
+  dns-hijack:\
+    - any:53\
+    - tcp://any:53' "$CONF_NAME"
+else
+    # 计算 tun 块的结束行
+    TUN_END=$(sed -n "$((TUN_START + 1)),\$p" "$CONF_NAME" | grep -n "^[^ #]" | head -n 1 | cut -d: -f1)
+    if [ -n "$TUN_END" ]; then TUN_END=$((TUN_START + TUN_END)); else TUN_END=$(wc -l < "$CONF_NAME"); fi
+    
+    # 在锁定区间内强制修改 enable 和 auto-redirect
+    sed -i "${TUN_START},${TUN_END}s/enable: .*/enable: true/" "$CONF_NAME"
+    sed -i "${TUN_START},${TUN_END}s/auto-redirect: .*/auto-redirect: true/" "$CONF_NAME"
 fi
+# ==================================
+
+# =======加固型 pid-file 处理 =========
+sed -i '/^pid-file:/d' "$CONF_NAME"
+MIXED_LINE=$(grep -n "^mixed-port:" "$CONF_NAME" | head -n 1 | cut -d: -f1)
+if [ -n "$MIXED_LINE" ]; then
+    sed -i "${MIXED_LINE}a pid-file: $WORK_DIR/mihomo.pid" "$CONF_NAME"
+else
+    sed -i "1i pid-file: $WORK_DIR/mihomo.pid" "$CONF_NAME"
+fi
+#============订阅覆写功能=============
+# 仅在 proxy-providers 存在时执行
+if grep -q "proxy-providers:" "$CONF_NAME"; then
+    
+    # 导出 URLS 给 awk 使用
+    export URLS_STR="$URLS"
+    
+    awk '
+    BEGIN {
+        split(ENVIRON["URLS_STR"], url_list, /[[:space:]\n]+/)
+        # 过滤空值，确保索引准确
+        j=1; for(i in url_list) if(url_list[i] ~ /^https?:\/\//) real_urls[j++]=url_list[i]
+        u_idx = 1; in_pp = 0; pp_indent = -1; node_indent = -1; in_hc = 0
+    }
+    # 文档分割符重置
+    /^---/ { in_pp = 0; in_hc = 0; pp_indent = -1; print; next }
+    # 识别 PP 块
+    /^[[:space:]]*["'\'']?proxy-providers["'\'']?:/ {
+        in_pp = 1; match($0, /^[[:space:]]*/); pp_indent = RLENGTH
+        print; next
+    }
+    in_pp {
+        match($0, /^[[:space:]]*/); curr_indent = RLENGTH
+        content = $0; sub(/^[[:space:]]*/, "", content)
+        # 退出 PP 块判定
+        if (curr_indent <= pp_indent && content ~ /^[^#]/ && $0 !~ /proxy-providers:/) {
+            in_pp = 0; in_hc = 0; node_indent = -1
+        }
+        if (in_pp) {
+            # 识别新 Provider 节点 (排除关键字和特殊锚点)
+            if (content ~ /^[^[:space:]]+:/ && content !~ /^(type|url|path|interval|filter|exclude|override|health-check|header|skip-cert|<<|&)/) {
+                node_indent = curr_indent; in_hc = 0
+            }
+            # 识别并进入 health-check 块
+            if (content ~ /^health-check:/) { in_hc = 1; hc_indent = curr_indent }
+            else if (in_hc && curr_indent <= hc_indent && content ~ /^[^#]/) { in_hc = 0 }
+            # 执行精准替换：必须在节点下、非 HC 块内、缩进正确
+            if (!in_hc && node_indent != -1 && curr_indent > node_indent && content ~ /^url:/) {
+                if (real_urls[u_idx] != "") {
+                    sub(/url:[[:space:]]*.*/, "url: \"" real_urls[u_idx] "\"", $0)
+                    u_idx++
+                }
+            }
+        }
+    }
+    { print }
+    ' "$CONF_NAME" > "${CONF_NAME}.tmp" && mv "${CONF_NAME}.tmp" "$CONF_NAME"
+fi
+
+#============
 
 # 进程清理与启动
 if [ -f "$WORK_DIR/$OFF_SCRIPT" ]; then
-    (sh "$WORK_DIR/$OFF_SCRIPT" >/dev/null 2>&1 &)
-    sleep 1
+    OFF_OUTPUT=$(sh "$WORK_DIR/$OFF_SCRIPT" 2>&1)
+    OFF_STATUS=$?
+    if [ $OFF_STATUS -ne 0 ]; then
+       # echo "$OFF_OUTPUT"
+        echo "❌ 错误：旧环境清理失败。"
+       # exit 1
+    fi
+    # 成功时可选择静默或提示
+  #  echo "$OFF_OUTPUT"
 fi
-
 
 sleep 1
 export GOMEMLIMIT=$MEM_LIMIT
 ulimit -m 524288
 
+# ===========启动与检验===============
 ./"$BIN_NAME" -d "$WORK_DIR" -f "$CONF_NAME" > "$LOG_NAME" 2>&1 &
 PID=$!
 
-sleep 2
-if ps -p $PID > /dev/null; then
+# 等待内核初始化及网络挂载
+sleep 4
+
+# 多维状态校验逻辑
+CHECK_SUCCESS=1
+
+# 1. 进程存活校验
+if ! ps -p $PID > /dev/null; then
+    CHECK_SUCCESS=0
+fi
+
+# 2. 端口监听校验 (从 config.yaml 动态获取端口)
+# 提取第一个可用的代理端口用于连通性测试
+CHECK_PORTS=$(grep -E "^(mixed-port|socks-port|redir-port|tproxy-port):" "$CONF_NAME" | awk '{print $2}' | tr -d ' \r')
+TEST_PORT=$(echo "$CHECK_PORTS" | grep -v "^0$" | head -n 1)
+
+for cp in $CHECK_PORTS; do
+    if [ "$cp" != "0" ] && ! netstat -tulnp | grep -q ":$cp "; then
+        CHECK_SUCCESS=0
+        break
+    fi
+done
+
+# 3. TUN 设备校验
+CHECK_TUN=$(grep -A 10 "^tun:" "$CONF_NAME" | grep "device:" | awk '{print $2}' | tr -d ' \r ')
+[ -z "$CHECK_TUN" ] && CHECK_TUN="Meta"
+
+if ! ip link show "$CHECK_TUN" > /dev/null 2>&1; then
+    CHECK_SUCCESS=0
+fi
+
+#---新增---
+# 4. 真实连通性校验 (Google 访问测试)
+if [ "$CHECK_SUCCESS" -eq 1 ] && [ -n "$TEST_PORT" ]; then
+    # 使用 curl 通过本地代理端口进行握手测试，超时设为 3 秒
+    if ! curl -I -s --connect-timeout 3 -x "127.0.0.1:$TEST_PORT" http://www.google.com/generate_204 | grep -q "204"; then
+        CHECK_SUCCESS=0
+    fi
+fi
+#-------
+
+if [ "$CHECK_SUCCESS" -eq 1 ]; then
     echo -800 > /proc/"$PID"/oom_score_adj 2>/dev/null
-    echo "✅ 启动完成 "
+    echo "✅ 启动完成，TUN代理及互联网出境已就绪"
 else
-    echo "❌ 启动失败，日志尾部内容："
-    tail -n 5 "$LOG_NAME"
+    echo "❌ 启动失败：内核异常、端口冲突或无法连接至外部网络。"
+    echo "🔍 诊断建议：检查 /data/adb/mih-lux/$LOG_NAME 并确认订阅节点是否有效"
+    # 启动失败时执行清理
+    [ -f "$WORK_DIR/$OFF_SCRIPT" ] && sh "$WORK_DIR/$OFF_SCRIPT" >/dev/null 2>&1
+    exit 1
 fi
