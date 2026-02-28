@@ -54,22 +54,26 @@ if [ "$HAS_CONFIG" = false ]; then
 fi
 # #-------
 
-#---修改---
-# --- 2. 端口强制释放 (针对 Toybox netstat 优化) ---
+# --- 2. 端口强制释放 ---
 for port in $PORTS_TO_KILL; do
     if [ -n "$port" ] && [ "$port" != "0" ]; then
-        # 提取 PID：精准匹配端口行，利用正则只提取斜杠前的纯数字 PID
-        PIDS=$(netstat -tulnp 2>/dev/null | grep ":$port " | awk '{print $7}' | grep -oE '^[0-9]+')
-
-        if [ -n "$PIDS" ]; then
-            for p in $PIDS; do
-                kill -9 "$p" 2>/dev/null
-            done
-            # 短暂缓冲，让内核处理端口释放
-            sleep 0.2
+        # 优先使用 fuser 精准杀死占用该 TCP 端口的进程
+        if command -v fuser >/dev/null 2>&1; then
+            fuser -k "$port/tcp" >/dev/null 2>&1
+        else
+            # 备选方案：提取 PID 并清理
+            PIDS=$(netstat -tulnp 2>/dev/null | grep ":$port " | awk '{print $7}' | grep -oE '^[0-9]+')
+            if [ -n "$PIDS" ]; then
+                for p in $PIDS; do
+                    kill -9 "$p" 2>/dev/null
+                done
+            fi
         fi
+        # 短暂缓冲，让内核处理端口释放
+        sleep 0.2
     fi
 done
+
 #-------
 
 # --- 3. 智能网卡清理 ---
@@ -105,32 +109,27 @@ done
 # 4. 内核层强制同步
 ip route flush cache
 
-#---修改---
-# --- 5. 最终状态审计 (增加容错缓冲) ---
+# --- 5. 最终状态审计  ---
 FAILED_ITEMS=""
 
-# 进程校验
-pgrep mihomo > /dev/null 2>&1 && FAILED_ITEMS="$FAILED_ITEMS [mihomo进程]"
+# 核心判准：如果进程已消失且网卡已卸载，则视为内核级清理成功
+# 只有在 pgrep 依然能抓到进程时，才进行深度的端口 LISTEN 状态审计
 
-# 端口占用校验 (增加 3 次重试，彻底解决 7890 延迟释放导致的误报)
-for port in $PORTS_TO_KILL; do
-    if [ -n "$port" ] && [ "$port" != "0" ]; then
-        RETRY_LIMIT=3
-        while [ $RETRY_LIMIT -gt 0 ]; do
-            if ! netstat -tulnp 2>/dev/null | grep -q ":$port "; then
-                break
+if pgrep mihomo > /dev/null 2>&1; then
+    FAILED_ITEMS="$FAILED_ITEMS [mihomo进程残留]"
+    
+    # 仅在进程残留时，审计端口的具体占用情况
+    for port in $PORTS_TO_KILL; do
+        if [ -n "$port" ] && [ "$port" != "0" ]; then
+            # 过滤只检查 LISTEN 状态，排除 TIME_WAIT 导致的误报
+            if netstat -tulnp 2>/dev/null | grep ":$port " | grep -q "LISTEN"; then
+                FAILED_ITEMS="$FAILED_ITEMS [端口:$port未释放]"
             fi
-            sleep 0.5
-            RETRY_LIMIT=$((RETRY_LIMIT - 1))
-        done
-        # 3 次检查后依然存在，才判定为失败
-        if [ $RETRY_LIMIT -eq 0 ]; then
-            FAILED_ITEMS="$FAILED_ITEMS [端口:$port]"
         fi
-    fi
-done
+    done
+fi
 
-# TUN 设备残留校验
+# TUN 设备残留校验 (独立校验)
 if ip link show "$TUN_DEVICE" > /dev/null 2>&1; then
     FAILED_ITEMS="$FAILED_ITEMS [网卡:$TUN_DEVICE]"
 fi
@@ -143,4 +142,3 @@ else
     echo "❌ 以下项目未被成功清理:$FAILED_ITEMS"
     exit 1
 fi
-#-------
