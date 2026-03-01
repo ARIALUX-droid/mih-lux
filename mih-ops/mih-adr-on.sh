@@ -272,7 +272,7 @@ check_and_prepare_env() {
             fi
             
             echo "🌐 正在拉取订阅至 $NEW_NAME ..."
-            curl -L -k -s -f --connect-timeout 10 --retry 3 -H "User-Agent: $UA" --tlsv1.3 -o "$NEW_NAME" "$SUB_URL"
+            curl -L -k -s -f --connect-timeout 15 --max-time 30 --retry 5 --retry-delay 2 -H "User-Agent: $UA" -o "$NEW_NAME" "$SUB_URL"
             if [ $? -eq 0 ] && [ -s "$NEW_NAME" ]; then
                 printf "\n#mih-lux\n#url:%s\n" "$SUB_URL" >> "$NEW_NAME"
                 CURRENT_CONF="$NEW_NAME"
