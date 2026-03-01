@@ -1,23 +1,27 @@
 #!/system/bin/sh
 # IDENTIFIER: ARIALUX-droid/mih-lux/mih-adr-on
-# 以上是唯一特征码，不要删除
 
 # 1. 用户配置区
 # ==================================
 # 填入订阅链接（每行一个），启动时将自动覆写配置
+#仅接受 http(s)，其他无效不会覆写
 URLS="
 订阅1
 订阅2
 订阅3
 "
+# 订阅链接与UA配置（用于 CONFIG_MODE=0）
+SUB_URL="订阅链接==============="
+UA="ClashMeta/1.19.19; mihomo/1.19.19"
 
-# 配置模式：1-通用配置（666大佬OneTouch），2-自用配置
-CONFIG_MODE=1
+# 配置模式：0-订阅配置（推荐）默认面板密码：mihomo 0可能兼容不好无法运行请手动修改配置
+# 1-通用配置（666大佬OneTouch），2-自用配置
+CONFIG_MODE=0
 
 # 自启动开关：1开启，0关闭
 AUTO_START=1
 
-# 内核版本选择：1-稳定版(Release)，2-预览版(Alpha)，3-智能修改版(Smart Alpha)
+# 内核版本选择：1-稳定版(Release)，2-预览版(Alpha)，3-智能版(Smart Alpha)
 CORE_TYPE=1
 
 #1开启加速链接，0直接使用原链接
@@ -28,25 +32,32 @@ INSTALL_PANEL=1
 
 MEM_LIMIT="256MiB"
 
-# 2. 系统变量定义
+# 2. 系统变量 definition
 # ==========================================
 REPO="MetaCubeX/mihomo"
 SMART_REPO="vernesong/mihomo"
 BIN_NAME="mihomo"
 CONF_NAME="config.yaml"
-LOG_NAME="clash.log"
+SUB_CONF_NAME="config.sub.yaml"
+LOG_NAME="run.log"
 OFF_SCRIPT="mih-adr-off.sh"
 GEOIP_NAME="geoip.metadb"
+GEOSITE_NAME="geosite.dat"
+COUNTRY_NAME="country.mmdb"
+ASN_NAME="asn.mmdb"
 MODEL_NAME="Model.bin"
 PANEL_PKG="top.zashboard.toapp.app"
 
-#mihomo配置文件下载地址
+#下载地址可自行修改
 #通用配置（666大佬OneTouch）
 COMMON_CONF_URL="https://raw.githubusercontent.com/666OS/YYDS/main/mihomo/config/OneTouch.yaml"
-#自用配置 geoip.metadb
+#自用配置
 CONF_URL="https://github.com/ARIALUX-droid/mih-lux/raw/main/configs/config.yaml"  
-# 数据库下载地址
 GEOIP_URL="https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
+GEOSITE_URL="https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
+COUNTRY_URL="https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/country.mmdb"
+ASN_URL="https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb"
+
 #停止脚本下载地址
 OFF_URL="https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/mih-ops/mih-adr-off.sh"
 # 面板下载链接
@@ -85,7 +96,6 @@ case "$WORK_DIR" in
 esac
 # ==================================
 
-# --- 自启动逻辑处理 ---
 if [ "$AUTO_START" -eq 1 ]; then
     # 检查文件是否存在，或内容是否指向当前脚本
     if [ ! -f "$TARGET_CONF" ] || ! grep -q "$SELF_PATH" "$TARGET_CONF"; then
@@ -232,11 +242,57 @@ check_and_prepare_env() {
     fi
 # ==================================
     # --- 3. 配置文件智能检测 ---
-    if [ ! -f "$CONF_NAME" ]; then
-        LOCAL_YAML=$(ls -t *.yaml 2>/dev/null | grep -vx "$CONF_NAME" | head -n 1)
+#------ 模式0 深度识别与多配置并存逻辑
+    if [ "$CONFIG_MODE" -eq 0 ]; then
+        MATCH_FILE=""
+        # 遍历所有 config.sub 开头的 yaml 文件，寻找匹配的 URL 标签
+        for f in config.sub*.yaml; do
+            [ -e "$f" ] || continue
+            EXISTING_URL=$(tail -n 2 "$f" | grep "^#url:" | cut -d: -f2-)
+            if [ "$EXISTING_URL" = "$SUB_URL" ]; then
+                MATCH_FILE="$f"
+                break
+            fi
+        done
+
+        if [ -n "$MATCH_FILE" ]; then
+            echo "✅ 发现匹配订阅的配置: $MATCH_FILE，直接复用。"
+            CURRENT_CONF="$MATCH_FILE"
+            # 更新 SUB_CONF_NAME 变量，确保后续注入逻辑指向正确文件
+            SUB_CONF_NAME="$MATCH_FILE"
+        else
+            echo "🔍 未发现匹配订阅的配置，准备执行新下载..."
+            # 自动分配新文件名：若 config.sub.yaml 已存在（且不匹配），则尝试 (1), (2)...
+            if [ ! -f "config.sub.yaml" ]; then
+                NEW_NAME="config.sub.yaml"
+            else
+                idx=1
+                while [ -f "config.sub($idx).yaml" ]; do idx=$((idx + 1)); done
+                NEW_NAME="config.sub($idx).yaml"
+            fi
+            
+            echo "🌐 正在拉取订阅至 $NEW_NAME ..."
+            curl -L -k -s -f --connect-timeout 10 --retry 3 -H "User-Agent: $UA" --tlsv1.3 -o "$NEW_NAME" "$SUB_URL"
+            if [ $? -eq 0 ] && [ -s "$NEW_NAME" ]; then
+                printf "\n#mih-lux\n#url:%s\n" "$SUB_URL" >> "$NEW_NAME"
+                CURRENT_CONF="$NEW_NAME"
+                SUB_CONF_NAME="$NEW_NAME"
+            else
+                echo "❌ 订阅下载失败。"
+                rm -f "$NEW_NAME"
+                return 1
+            fi
+        fi
+        
+    else
+        CURRENT_CONF="$CONF_NAME"
+    fi
+
+    if [ ! -f "$CURRENT_CONF" ]; then
+        LOCAL_YAML=$(ls -t *.yaml 2>/dev/null | grep -vx "$CONF_NAME" | grep -vx "$SUB_CONF_NAME" | head -n 1)
         if [ -n "$LOCAL_YAML" ]; then
-            echo "📦 发现本地配置 $LOCAL_YAML，正在重命名为 $CONF_NAME..."
-            mv "$LOCAL_YAML" "$CONF_NAME"
+            echo "📦 发现本地配置 $LOCAL_YAML，正在重命名为 $CURRENT_CONF..."
+            mv "$LOCAL_YAML" "$CURRENT_CONF"
         else
             echo "🔍 无本地配置，准备从云端下载默认模板..."
 
@@ -244,22 +300,38 @@ check_and_prepare_env() {
             if [ "$CONFIG_MODE" -eq 1 ]; then
                 SELECTED_URL="$COMMON_CONF_URL"
                 echo "使用通用配置模式"
+                if ! download_file "$CURRENT_CONF" "$(get_real_url "$SELECTED_URL")" "$SELECTED_URL"; then return 1; fi
             else
                 SELECTED_URL="$CONF_URL"
                 echo "使用自用配置模式"
-            fi
-            if ! download_file "$CONF_NAME" "$(get_real_url "$SELECTED_URL")" "$SELECTED_URL"; then
-                 return 1
+                if ! download_file "$CURRENT_CONF" "$(get_real_url "$SELECTED_URL")" "$SELECTED_URL"; then return 1; fi
             fi
         fi
     fi
 
     # --- 1. 检查数据库 ---
  # 数据库下载
+
     if [ ! -f "$GEOIP_NAME" ]; then
         echo "🔍 $GEOIP_NAME 不存在，正在下载..."
         download_file "$GEOIP_NAME" "$(get_real_url "$GEOIP_URL")" "$GEOIP_URL"
     fi
+
+    if [ ! -f "$GEOSITE_NAME" ]; then
+        echo "🔍 $GEOSITE_NAME 不存在，正在下载..."
+        download_file "$GEOSITE_NAME" "$(get_real_url "$GEOSITE_URL")" "$GEOSITE_URL"
+    fi
+
+    if [ ! -f "$COUNTRY_NAME" ]; then
+        echo "🔍 $COUNTRY_NAME 不存在，正在下载..."
+        download_file "$COUNTRY_NAME" "$(get_real_url "$COUNTRY_URL")" "$COUNTRY_URL"
+    fi
+
+    if [ ! -f "$ASN_NAME" ]; then
+        echo "🔍 $ASN_NAME 不存在，正在下载..."
+        download_file "$ASN_NAME" "$(get_real_url "$ASN_URL")" "$ASN_URL"
+    fi
+
     
 # --- 停止脚本检查与下载 ---
     if [ ! -f "$OFF_SCRIPT" ]; then
@@ -272,7 +344,7 @@ check_and_prepare_env() {
         fi
     fi
 
-    [ -f "$BIN_NAME" ] && [ -f "$CONF_NAME" ]
+    [ -f "$BIN_NAME" ] && [ -f "$CURRENT_CONF" ]
 }
 
 # ==========================================
@@ -291,46 +363,99 @@ chmod 777 "$BIN_NAME"
 chown root:root "$BIN_NAME" 2>/dev/null 
 
 # 自动处理配置注入
-# =============tun覆写================
-# 锁定 tun 模块的作用域
-TUN_START=$(grep -n "^tun:" "$CONF_NAME" | head -n 1 | cut -d: -f1)
-if [ -z "$TUN_START" ]; then
-    echo "🔧 配置文件缺少 tun 模块，正在注入默认 tun 配置..."
+# =============核心覆写逻辑================
+if [ "$CONFIG_MODE" -eq 0 ]; then
+    echo "🔧 执行模式0：执行加固级配置重组与块覆写..."
+    
+    # 1. 物理清洗：移除所有可能冲突的单行配置与多行块（profile, tun, cors）
+    # 使用 awk 状态机实现暴力且安全的块擦除，避免 YAML 层级残留
+    awk '
+    BEGIN { 
+        # 定义需要擦除的顶级块
+        split("profile: tun: external-controller-cors:", blocks) 
+        for(i in blocks) target[blocks[i]]=1
+    }
+    # 状态切换：遇到目标块起始
+    $1 ~ /^(profile:|tun:|external-controller-cors:)$/ { flag=1; next }
+    # 状态切换：遇到非缩进的其它顶级配置，停止擦除
+    /^[^ #]/ { flag=0 }
+    # 仅在非擦除状态下打印
+    !flag { print }
+    ' "$SUB_CONF_NAME" > "${SUB_CONF_NAME}.tmp" && mv "${SUB_CONF_NAME}.tmp" "$SUB_CONF_NAME"
+
+    # 移除单行关键参数
+    sed -i '/^port:/d; /^socks-port:/d; /^redir-port:/d; /^mixed-port:/d; /^tproxy-port:/d; /^secret:/d; /^external-controller:/d; /^ipv6:/d; /^unified-delay:/d' "$SUB_CONF_NAME"
+    
+    # 2. 顶层注入：强制注入用户定义的基准参数与复杂块
+    # 采用 1i 确保优先级，并严格遵守 YAML 缩进
     sed -i '1i \
+mixed-port: 7890\
+ipv6: false\
+external-controller: 127.0.0.1:9090\
+secret: mihomo\
+unified-delay: false\
+profile:\
+  store-selected: true\
+external-controller-cors:\
+  allow-private-network: true\
+  allow-origins:\
+    - tauri://localhost\
+    - http://tauri.localhost\
+    - https://yacd.metacubex.one\
+    - https://metacubex.github.io\
+    - https://board.zash.run.place\
 tun:\
   enable: true\
-  stack: gvisor\
-  device: Meta\
-  udp-timeout: 300\
-  auto-route: true\
-  auto-redirect: true\
   auto-detect-interface: true\
-  strict-route: true\
+  auto-route: true\
+  device: Mihomo\
   dns-hijack:\
     - any:53\
-    - tcp://any:53' "$CONF_NAME"
+  mtu: 1500\
+  route-exclude-address: []\
+  stack: gvisor\
+  strict-route: false' "$SUB_CONF_NAME"
+
 else
-    # 计算 tun 块的结束行
-    TUN_END=$(sed -n "$((TUN_START + 1)),\$p" "$CONF_NAME" | grep -n "^[^ #]" | head -n 1 | cut -d: -f1)
-    if [ -n "$TUN_END" ]; then TUN_END=$((TUN_START + TUN_END)); else TUN_END=$(wc -l < "$CONF_NAME"); fi
-    
-    # 在锁定区间内强制修改 enable 和 auto-redirect
-    sed -i "${TUN_START},${TUN_END}s/enable: .*/enable: true/" "$CONF_NAME"
-    sed -i "${TUN_START},${TUN_END}s/auto-redirect: .*/auto-redirect: true/" "$CONF_NAME"
+    # 仅检测 tun 块是否存在
+    TUN_START=$(grep -n "^tun:" "$CONF_NAME" | head -n 1 | cut -d: -f1)
+    if [ -z "$TUN_START" ]; then
+        echo "   配置文件缺少 tun 模块，追加基础 tun 结构..."
+        sed -i '1i \
+tun:\
+  enable: true\
+  auto-redirect: true\
+  stack: gvisor\
+  device: Meta' "$CONF_NAME"
+    else
+        # 计算 tun 块作用域并执行精准替换
+        TUN_END=$(sed -n "$((TUN_START + 1)),\$p" "$CONF_NAME" | grep -n "^[^ #]" | head -n 1 | cut -d: -f1)
+        if [ -n "$TUN_END" ]; then TUN_END=$((TUN_START + TUN_END)); else TUN_END=$(wc -l < "$CONF_NAME"); fi
+        
+        sed -i "${TUN_START},${TUN_END}s/^[[:space:]]*enable:.*/  enable: true/" "$CONF_NAME"
+        sed -i "${TUN_START},${TUN_END}s/^[[:space:]]*auto-redirect:.*/  auto-redirect: true/" "$CONF_NAME"
+    fi
 fi
 # ==================================
 
 # =======加固型 pid-file 处理 =========
-sed -i '/^pid-file:/d' "$CONF_NAME"
-MIXED_LINE=$(grep -n "^mixed-port:" "$CONF_NAME" | head -n 1 | cut -d: -f1)
-if [ -n "$MIXED_LINE" ]; then
-    sed -i "${MIXED_LINE}a pid-file: $WORK_DIR/mihomo.pid" "$CONF_NAME"
+if [ "$CONFIG_MODE" -eq 0 ]; then
+    ACTIVE_CONF="$SUB_CONF_NAME"
 else
-    sed -i "1i pid-file: $WORK_DIR/mihomo.pid" "$CONF_NAME"
+    ACTIVE_CONF="$CONF_NAME"
 fi
+
+sed -i '/^pid-file:/d' "$ACTIVE_CONF"
+MIXED_LINE=$(grep -n "^mixed-port:" "$ACTIVE_CONF" | head -n 1 | cut -d: -f1)
+if [ -n "$MIXED_LINE" ]; then
+    sed -i "${MIXED_LINE}a pid-file: $WORK_DIR/mihomo.pid" "$ACTIVE_CONF"
+else
+    sed -i "1i pid-file: $WORK_DIR/mihomo.pid" "$ACTIVE_CONF"
+fi
+
 #============订阅覆写功能=============
 # 仅在 proxy-providers 存在时执行
-if grep -q "proxy-providers:" "$CONF_NAME"; then
+if grep -q "proxy-providers:" "$ACTIVE_CONF"; then
     
     # 导出 URLS 给 awk 使用
     export URLS_STR="$URLS"
@@ -374,7 +499,7 @@ if grep -q "proxy-providers:" "$CONF_NAME"; then
         }
     }
     { print }
-    ' "$CONF_NAME" > "${CONF_NAME}.tmp" && mv "${CONF_NAME}.tmp" "$CONF_NAME"
+    ' "$ACTIVE_CONF" > "${ACTIVE_CONF}.tmp" && mv "${ACTIVE_CONF}.tmp" "$ACTIVE_CONF"
 fi
 
 #============
@@ -397,13 +522,13 @@ export GOMEMLIMIT=$MEM_LIMIT
 ulimit -m 524288
 
 # ===========启动与检验===============
-./"$BIN_NAME" -d "$WORK_DIR" -f "$CONF_NAME" > "$LOG_NAME" 2>&1 &
+./"$BIN_NAME" -d "$WORK_DIR" -f "$ACTIVE_CONF" > "$LOG_NAME" 2>&1 &
 PID=$!
 
 # 等待内核初始化及网络挂载
 sleep 4
 
-# 多维状态校验逻辑
+# 多维状态校验 logic
 CHECK_SUCCESS=1
 
 # 1. 进程存活校验
@@ -411,43 +536,18 @@ if ! ps -p $PID > /dev/null; then
     CHECK_SUCCESS=0
 fi
 
-# 2. 端口监听校验 (从 config.yaml 动态获取端口)
-# 提取第一个可用的代理端口用于连通性测试
-CHECK_PORTS=$(grep -E "^(mixed-port|socks-port|redir-port|tproxy-port):" "$CONF_NAME" | awk '{print $2}' | tr -d ' \r')
-TEST_PORT=$(echo "$CHECK_PORTS" | grep -v "^0$" | head -n 1)
-
-for cp in $CHECK_PORTS; do
-    if [ "$cp" != "0" ] && ! netstat -tulnp | grep -q ":$cp "; then
-        CHECK_SUCCESS=0
-        break
-    fi
-done
-
-# 3. TUN 设备校验
-CHECK_TUN=$(grep -A 10 "^tun:" "$CONF_NAME" | grep "device:" | awk '{print $2}' | tr -d ' \r ')
-[ -z "$CHECK_TUN" ] && CHECK_TUN="Meta"
-
-if ! ip link show "$CHECK_TUN" > /dev/null 2>&1; then
-    CHECK_SUCCESS=0
-fi
-
-#---新增---
-# 4. 真实连通性校验 (Google 访问测试)
+# 2. 真实连通性校验 (Google 访问测试)
 if [ "$CHECK_SUCCESS" -eq 1 ] && [ -n "$TEST_PORT" ]; then
-    # 使用 curl 通过本地代理端口进行握手测试，超时设为 3 秒
-    if ! curl -I -s --connect-timeout 3 -x "127.0.0.1:$TEST_PORT" http://www.google.com/generate_204 | grep -q "204"; then
+    # 使用 curl 通过本地代理端口进行握手测试，超时设为 5 秒
+    if ! curl -I -s --connect-timeout 5 -x "127.0.0.1:$TEST_PORT" http://www.google.com/generate_204 | grep -q "204"; then
         CHECK_SUCCESS=0
     fi
 fi
-#-------
 
 if [ "$CHECK_SUCCESS" -eq 1 ]; then
     echo -800 > /proc/"$PID"/oom_score_adj 2>/dev/null
-    echo "✅ 启动完成，TUN代理及互联网出境已就绪"
+    echo "✅ 启动完成，互联网出境已就绪"
 else
     echo "❌ 启动失败：内核异常、端口冲突或无法连接至外部网络。"
-    echo "🔍 诊断建议：检查 /data/adb/mih-lux/$LOG_NAME 并确认订阅节点是否有效"
-    # 启动失败时执行清理
-    [ -f "$WORK_DIR/$OFF_SCRIPT" ] && sh "$WORK_DIR/$OFF_SCRIPT" >/dev/null 2>&1
     exit 1
 fi
