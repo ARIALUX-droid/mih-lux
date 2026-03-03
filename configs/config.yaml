@@ -37,23 +37,23 @@ FilterOT: &FilterOT '^(?!.*(DIRECT|直接连接|美|港|坡|台|新|日|韩|奥|
 FilterAL: &FilterAL '^(?!.*(DIRECT|直接连接|群|邀请|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|无法|说明|使用|提示|特别|访问|教程|关注|更新|作者|加入|USE|USED|TOTAL|EXPIRE|EMAIL|Panel|Channel|Author))'
 
 # 策略组代理列表模板 - 预定义的代理节点优先级排序
-SelectAL: &SelectAL   {type: select, proxies: [优, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 手动选择, 直接连接, REJECT]}
-SelectOne: &SelectOne {type: select, proxies: [一键连, 故障转移, 优, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动,  欧洲自动, 手动选择, 直接连接, REJECT]}
-SelectUS: &SelectUS   {type: select, proxies: [优, 故障转移, 美国自动, 一键连, 香港自动, 台湾自动, 日本自动, 狮城自动, 欧洲自动, 手动选择, 直接连接, REJECT]}
-SelectDC: &SelectDC   {type: select, proxies: [直接连接, 一键连, 优, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 手动选择, REJECT]}
+SelectAL: &SelectAL   {type: select, proxies: [机场1, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 手动选择, 直接连接, REJECT]}
+SelectOne: &SelectOne {type: select, proxies: [一键连, 故障转移, 机场1, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动,  欧洲自动, 手动选择, 直接连接, REJECT]}
+SelectUS: &SelectUS   {type: select, proxies: [机场1, 故障转移, 美国自动, 一键连, 香港自动, 台湾自动, 日本自动, 狮城自动, 欧洲自动, 手动选择, 直接连接, REJECT]}
+SelectDC: &SelectDC   {type: select, proxies: [直接连接, 一键连, 机场1, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 手动选择, REJECT]}
 
 # ==================== 代理提供者 ====================
 proxy-providers:
   Proxy1:
     <<: *BaseProvider
-    url: "订阅"
+    url: ""
     path: ./providers/Proxy1.yaml
     override:
       additional-prefix: '[机场1] '
 
   Proxy2:
     <<: *BaseProvider
-    url: "订阅"
+    url: ""
     path: ./providers/Proxy2.yaml  
     override:
       additional-prefix: '[机场2] '
