@@ -1,4 +1,4 @@
-# 名称: OneTouch 一键连
+﻿# 名称: OneTouch 一键连
 # 地址: https://github.com/666OS/YYDS
 # 版本: v26.1.0
 # 作者: YYDS666
@@ -210,7 +210,7 @@ proxy-groups:
     hidden: true
     <<: *BaseFB
 
-  - name: 机场1
+  - name: 机场2
     icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Server.png"
     use: [Proxy2]
     filter: *FilterAL
