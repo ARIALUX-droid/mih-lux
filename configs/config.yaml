@@ -128,12 +128,19 @@ tun:
   dns-hijack: 
     - any:53
     - tcp://any:53
-  exclude-package:
-   - com.tencent.mm           # 微信
-   - com.tencent.mobileqq     # QQ
-   - com.eg.android.AlipayGphone # 支付宝
-   - com.unionpay             # 云闪付
-   - com.miui.packageinstaller #小米应用包安装程序
+  Exclude-package:
+  - com.tencent.mm # 微信
+  - com.tencent.mobileqq # QQ
+  - com.eg.android.AlipayGphone # 支付宝
+  - com.unionpay # 云闪付
+  - com.taobao.taobao # 淘宝
+  - com.jingdong.app.mall # 京东
+  - com.xunmeng.pinduoduo # 拼多多
+  - com.ss.android.ugc.aweme # 抖音
+  - com.miui.packageinstaller # 小米应用包安装程序
+  - com.miui.securitycenter # 手机管家
+  - com.android.settings # 系统设置
+  - com.autonavi.minimap # 高德地图
     
 # DNS配置
 dns:
