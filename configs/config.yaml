@@ -44,26 +44,26 @@ SelectDC: &SelectDC   {type: select, proxies: [直接连接, 一键连, 优, 故
 
 # ==================== 代理提供者 ====================
 proxy-providers:
-  优质服务商:
+  Proxy1:
     <<: *BaseProvider
     url: "订阅"
-    path: ./providers/优质服务商.yaml
+    path: ./providers/Proxy1.yaml
     override:
-      additional-prefix: '[优] '
+      additional-prefix: '[机场1] '
 
-  备用服务商:
+  Proxy2:
     <<: *BaseProvider
     url: "订阅"
-    path: ./providers/备用服务商.yaml  
+    path: ./providers/Proxy2.yaml  
     override:
-      additional-prefix: '[备] '
+      additional-prefix: '[机场2] '
 
 
 # ==================== 核心配置 ====================
 # 基础配置
 mode: rule
 mixed-port: 7890
-ipv6: false
+ipv6: true
 allow-lan: true
 unified-delay: true
 tcp-concurrent: true
@@ -75,7 +75,7 @@ keep-alive-idle: 15
 
 # 认证配置
 authentication:
-  - mihomo:yyds666
+  - mihomo:mihomo
 skip-auth-prefixes:
   - 192.168.1.0/24
   - 192.168.31.0/24
@@ -87,11 +87,11 @@ experimental:
   quic-go-disable-gso: true  
      
 # 管理面板配置
-external-controller: 0.0.0.0:9090
-secret: ""
-external-ui: ui
+external-ui-url: https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip
 external-ui-name: zashboard
-external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
+external-ui: ui
+external-controller: 127.0.0.1:9090
+secret: mihomo
 
 
 # 配置存储
@@ -118,16 +118,13 @@ sniffer:
 # TUN模式配置
 tun:
   enable: true
-  stack: gvisor
-  device: Meta
-  udp-timeout: 300
+  stack: mixed
+  dns-hijack:
+    - "any:53"
+    - "tcp://any:53"
   auto-route: true
   auto-redirect: true
   auto-detect-interface: true
-  strict-route: true
-  dns-hijack: 
-    - any:53
-    - tcp://any:53
   exclude-package:
    - com.tencent.mm           # 微信
    - com.tencent.mobileqq # QQ
@@ -145,8 +142,7 @@ tun:
 # DNS配置
 dns:
   enable: true
-  listen: 0.0.0.0:1053
-  ipv6: false
+  ipv6: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
   default-nameserver:
@@ -174,7 +170,7 @@ proxy-groups:
 
   - name: 故障转移
     icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/ULB.png"
-    proxies: [优, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动, 欧洲自动, 手动选择, 直接连接, REJECT]
+    proxies: [机场1, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动, 欧洲自动, 手动选择, 直接连接, REJECT]
     <<: *BaseFB
 
   - name: 人工智能
@@ -207,9 +203,16 @@ proxy-groups:
     proxies: [DIRECT]
     hidden: true
 
-  - name: 优
+  - name: 机场1
     icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Server.png"
-    use: [优质服务商]
+    use: [Proxy1]
+    filter: *FilterAL
+    hidden: true
+    <<: *BaseFB
+
+  - name: 机场1
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Server.png"
+    use: [Proxy2]
     filter: *FilterAL
     hidden: true
     <<: *BaseFB
