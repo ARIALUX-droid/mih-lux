@@ -8,7 +8,7 @@
 
 # ==================== 锚点配置 ====================
 # 代理提供者模板 - 订阅源基础配置
-BaseProvider: &BaseProvider {type: http, interval: 86400, proxy: DIRECT, health-check: {enable: true, url: 'https://www.google.com/generate_204', interval: 300}, filter: '^(?!.*(群|邀请|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|无法|说明|使用|提示|特别|访问|教程|关注|更新|作者|加入|USE|USED|TOTAL|ETVIRE|EMAIL|Panel|Channel|Author))'}
+BaseProvider: &BaseProvider {type: http, interval: 86400, proxy: DIRECT, health-check: {enable: true, url: 'https://www.google.com/generate_204', interval: 300}, filter: '^(?!.*(群|邀请|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|选择|火箭|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|无法|说明|使用|提示|特别|访问|教程|关注|更新|作者|加入|USE|USED|TOTAL|ETVIRE|EMAIL|Panel|Channel|Author))'}
 
 # 策略组类型模板 - 定义不同的策略组基础配置
 BaseUT: &BaseUT
@@ -37,10 +37,10 @@ FilterOT: &FilterOT '^(?!.*(DIRECT|直接连接|美|港|坡|台|新|日|韩|奥|
 FilterAL: &FilterAL '^(?!.*(DIRECT|直接连接|群|邀请|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|无法|说明|使用|提示|特别|访问|教程|关注|更新|作者|加入|USE|USED|TOTAL|EXPIRE|EMAIL|Panel|Channel|Author))'
 
 # 策略组代理列表模板 - 预定义的代理节点优先级排序
-SelectAL: &SelectAL   {type: select, proxies: [机场1, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 手动选择, 直接连接, REJECT]}
-SelectOne: &SelectOne {type: select, proxies: [一键连, 故障转移, 机场1, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动,  欧洲自动, 手动选择, 直接连接, REJECT]}
-SelectUS: &SelectUS   {type: select, proxies: [机场1, 故障转移, 美国自动, 一键连, 香港自动, 台湾自动, 日本自动, 狮城自动, 欧洲自动, 手动选择, 直接连接, REJECT]}
-SelectDC: &SelectDC   {type: select, proxies: [直接连接, 一键连, 机场1, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 手动选择, REJECT]}
+SelectAL: &SelectAL   {type: select, proxies: [US-机场1, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 手动选择, 直接连接, REJECT]}
+SelectOne: &SelectOne {type: select, proxies: [一键连, 故障转移, US-机场1, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动,  欧洲自动, 手动选择, 直接连接, REJECT]}
+SelectUS: &SelectUS   {type: select, proxies: [US-机场1, 故障转移, 美国自动, 一键连, 香港自动, 台湾自动, 日本自动, 狮城自动, 欧洲自动, 手动选择, 直接连接, REJECT]}
+SelectDC: &SelectDC   {type: select, proxies: [直接连接, 一键连, US-机场1, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 手动选择, REJECT]}
 
 # ==================== 代理提供者 ====================
 proxy-providers:
@@ -170,7 +170,7 @@ proxy-groups:
 
   - name: 故障转移
     icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/ULB.png"
-    proxies: [机场1, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动, 欧洲自动, 手动选择, 直接连接, REJECT]
+    proxies: [US-机场1, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动, 欧洲自动, 手动选择, 直接连接, REJECT]
     <<: *BaseFB
 
   - name: 人工智能
@@ -186,10 +186,9 @@ proxy-groups:
     <<: *SelectDC
 
   - name: 手动选择
-    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Clubhouse.png"
+    icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/Clubhouse.png"
     type: select
-    include-all: true
-    filter: *FilterAL
+    include-all: true 
 
   - name: 广告
     icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/anti-ad.png"
@@ -202,20 +201,6 @@ proxy-groups:
     type: select
     proxies: [DIRECT]
     hidden: true
-
-  - name: 机场1
-    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Server.png"
-    use: [Proxy1]
-    filter: *FilterAL
-    hidden: true
-    <<: *BaseFB
-
-  - name: 机场2
-    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Server.png"
-    use: [Proxy2]
-    filter: *FilterAL
-    hidden: true
-    <<: *BaseFB
 
   - name: 香港自动
     icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/Hong_Kong.png"
@@ -239,6 +224,12 @@ proxy-groups:
     icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/Singapore.png"
     filter: *FilterSG
     include-all: true
+    <<: *BaseUT
+
+  - name: US-机场1
+    icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/United_States.png"
+    use: [Proxy1]
+    hidden: true
     <<: *BaseUT
 
   - name: 美国自动
