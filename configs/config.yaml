@@ -62,7 +62,7 @@ proxy-providers:
 # 基础配置
 mode: rule
 mixed-port: 7890
-ipv6: true
+ipv6: false
 allow-lan: true
 unified-delay: true
 tcp-concurrent: true
@@ -141,7 +141,7 @@ tun:
 # DNS配置
 dns:
   enable: true
-  ipv6: true
+  ipv6: false
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
   default-nameserver:
@@ -336,5 +336,6 @@ rule-providers:
     <<: *BehaviorIP
     path: ./rules/PrivateIP.mrs
     url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/private.mrs"
+
 
 
