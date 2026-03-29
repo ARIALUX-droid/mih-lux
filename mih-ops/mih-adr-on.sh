@@ -6,23 +6,26 @@
 # 填入订阅链接（每行一个），启动时将自动覆写配置
 #仅接受 http(s)，其他无效不会覆写
 URLS="
-订阅1
-订阅2
-订阅3
+订阅
+订阅
 "
 # 订阅链接与UA配置（用于 CONFIG_MODE=0）
-SUB_URL="订阅链接==============="
-UA="ClashMeta/1.19.19; mihomo/1.19.19"
+SUB_URL="订阅"
+UA="ClashMetaForAndroid/2.11.2.Meta"
 
 # 配置模式：0-订阅配置（推荐）默认面板密码：mihomo 0可能兼容不好无法运行请手动修改配置
 # 1-通用配置（666大佬OneTouch），2-自用配置
 CONFIG_MODE=0
 
-# 自启动开关：1开启，0关闭
+# 开机自启动：1开启，0关闭
 AUTO_START=1
 
 # 内核版本选择：1-稳定版(Release)，2-预览版(Alpha)，3-智能版(Smart Alpha)
 CORE_TYPE=1
+
+#数据库下载，留空不下载，内核也会自动下载
+# 可选值：geoip, geosite, country, asn, model
+MANUAL_GEO_LIST=
 
 #1开启加速链接，0直接使用原链接
 ENABLE_PROXY=1
@@ -75,22 +78,38 @@ SERVICE_D="/data/adb/service.d"
 TARGET_CONF="$SERVICE_D/mihomo_start.sh"
 
 # ==================================
-# 执行目录安全检查、自动迁移并立即执行
+# --- 必须先定义以下变量以确保逻辑生效 ---
+# 获取当前脚本所在的绝对目录 [1]
+WORK_DIR=$(cd "$(dirname "$0")"; pwd)
+# 获取当前脚本的完整绝对路径 [1]
+SELF_PATH=$(realpath "$0")
+
+# 执行目录安全检查、自动迁移并立即执行 [2]
 case "$WORK_DIR" in
     /data/local/tmp*|/data/adb*)
-        # 处于允许的目录及其子目录下，跳过检测
+        # 处于允许的目录及其子目录下，跳过检测 [2]
         ;;
     *)
-        # 不在允许范围内，执行迁移并后续执行
+        # 不在允许范围内，执行迁移
         NEW_HOME="/data/adb/mih-lux"
         NEW_PATH="$NEW_HOME/mih-adr-on.sh"
-        echo "⚠️ 当前目录 $WORK_DIR 不在允许范围内。
-        推荐放在/data/adb/中执行"
-        echo "🚚 正在迁移脚本至 $NEW_HOME 并启动..."
-        [ ! -d "$NEW_HOME" ] && mkdir -p "$NEW_HOME" && chmod 755 "$NEW_HOME"
-        mv "$SELF_PATH" "$NEW_PATH"
+        
+        echo "⚠️ 当前目录 $WORK_DIR 不在允许范围内。"
+        echo "💡 推荐将脚本放在 /data/adb/ 目录下以保证内核执行权限。"
+        echo "🚚 正在迁移脚本至 $NEW_HOME 并重新启动..."
+
+        # 1. 创建目标目录并设置权限 [2]
+        if [ ! -d "$NEW_HOME" ]; then
+            mkdir -p "$NEW_HOME" || { echo "❌ 无法创建目录，请检查 Root 权限"; exit 1; }
+            chmod 755 "$NEW_HOME"
+        fi
+
+        # 2. 复制脚本到新路径（比直接 mv 更安全，防止执行中的脚本丢失）
+        cp "$SELF_PATH" "$NEW_PATH" || { echo "❌ 迁移文件失败"; exit 1; }
         chmod +x "$NEW_PATH"
-        # 迁移后立即替换当前进程并执行新路径下的脚本
+
+        # 3. 使用 exec 立即替换当前进程，执行新位置的脚本 [2]
+        # 这样脚本会从头开始在新目录下运行，并进入上面的允许目录分支
         exec /system/bin/sh "$NEW_PATH"
         ;;
 esac
@@ -312,26 +331,32 @@ check_and_prepare_env() {
     # --- 1. 检查数据库 ---
  # 数据库下载
 
-    if [ ! -f "$GEOIP_NAME" ]; then
-        echo "🔍 $GEOIP_NAME 不存在，正在下载..."
-        download_file "$GEOIP_NAME" "$(get_real_url "$GEOIP_URL")" "$GEOIP_URL"
-    fi
-
-    if [ ! -f "$GEOSITE_NAME" ]; then
-        echo "🔍 $GEOSITE_NAME 不存在，正在下载..."
-        download_file "$GEOSITE_NAME" "$(get_real_url "$GEOSITE_URL")" "$GEOSITE_URL"
-    fi
-
-    if [ ! -f "$COUNTRY_NAME" ]; then
-        echo "🔍 $COUNTRY_NAME 不存在，正在下载..."
-        download_file "$COUNTRY_NAME" "$(get_real_url "$COUNTRY_URL")" "$COUNTRY_URL"
-    fi
-
-    if [ ! -f "$ASN_NAME" ]; then
-        echo "🔍 $ASN_NAME 不存在，正在下载..."
-        download_file "$ASN_NAME" "$(get_real_url "$ASN_URL")" "$ASN_URL"
-    fi
-
+if [ -n "$MANUAL_GEO_LIST" ]; then
+    for item in $MANUAL_GEO_LIST; do
+        case "$item" in
+            "geoip")
+                [ ! -f "$GEOIP_NAME" ] && download_file "$GEOIP_NAME" "$(get_real_url "$GEOIP_URL")" "$GEOIP_URL"
+                ;;
+            "geosite")
+                [ ! -f "$GEOSITE_NAME" ] && download_file "$GEOSITE_NAME" "$(get_real_url "$GEOSITE_URL")" "$GEOSITE_URL"
+                ;;
+            "country")
+                [ ! -f "$COUNTRY_NAME" ] && download_file "$COUNTRY_NAME" "$(get_real_url "$COUNTRY_URL")" "$COUNTRY_URL"
+                ;;
+            "asn")
+                [ ! -f "$ASN_NAME" ] && download_file "$ASN_NAME" "$(get_real_url "$ASN_URL")" "$ASN_URL"
+                ;;
+            "model")
+                [ ! -f "$MODEL_NAME" ] && download_file "$MODEL_NAME" "$(get_real_url "$MODEL_URL")" "$MODEL_URL"
+                ;;
+            *)
+                echo "⚠️ 跳过未知项目: $item"
+                ;;
+        esac
+    done
+else
+    echo "ℹ️ MANUAL_GEO_LIST 为空，跳过所有数据库检查。"
+fi
     
 # --- 停止脚本检查与下载 ---
     if [ ! -f "$OFF_SCRIPT" ]; then
@@ -453,56 +478,39 @@ else
     sed -i "1i pid-file: $WORK_DIR/mihomo.pid" "$ACTIVE_CONF"
 fi
 
-#============订阅覆写功能=============
-# 仅在 proxy-providers 存在时执行
+#============ 优化版：高兼容性订阅覆写 =============
 if grep -q "proxy-providers:" "$ACTIVE_CONF"; then
+  #  echo "🔄 正在执行顺序兼容性覆写..."
     
-    # 导出 URLS 给 awk 使用
-    export URLS_STR="$URLS"
+    # 获取 proxy-providers 模块开始的行号
+    START_L=$(grep -n "^proxy-providers:" "$ACTIVE_CONF" | head -n 1 | cut -d: -f1)
     
-    awk '
-    BEGIN {
-        split(ENVIRON["URLS_STR"], url_list, /[[:space:]\n]+/)
-        # 过滤空值，确保索引准确
-        j=1; for(i in url_list) if(url_list[i] ~ /^https?:\/\//) real_urls[j++]=url_list[i]
-        u_idx = 1; in_pp = 0; pp_indent = -1; node_indent = -1; in_hc = 0
-    }
-    # 文档分割符重置
-    /^---/ { in_pp = 0; in_hc = 0; pp_indent = -1; print; next }
-    # 识别 PP 块
-    /^[[:space:]]*["'\'']?proxy-providers["'\'']?:/ {
-        in_pp = 1; match($0, /^[[:space:]]*/); pp_indent = RLENGTH
-        print; next
-    }
-    in_pp {
-        match($0, /^[[:space:]]*/); curr_indent = RLENGTH
-        content = $0; sub(/^[[:space:]]*/, "", content)
-        # 退出 PP 块判定
-        if (curr_indent <= pp_indent && content ~ /^[^#]/ && $0 !~ /proxy-providers:/) {
-            in_pp = 0; in_hc = 0; node_indent = -1
-        }
-        if (in_pp) {
-            # 识别新 Provider 节点 (排除关键字和特殊锚点)
-            if (content ~ /^[^[:space:]]+:/ && content !~ /^(type|url|path|interval|filter|exclude|override|health-check|header|skip-cert|<<|&)/) {
-                node_indent = curr_indent; in_hc = 0
-            }
-            # 识别并进入 health-check 块
-            if (content ~ /^health-check:/) { in_hc = 1; hc_indent = curr_indent }
-            else if (in_hc && curr_indent <= hc_indent && content ~ /^[^#]/) { in_hc = 0 }
-            # 执行精准替换：必须在节点下、非 HC 块内、缩进正确
-            if (!in_hc && node_indent != -1 && curr_indent > node_indent && content ~ /^url:/) {
-                if (real_urls[u_idx] != "") {
-                    sub(/url:[[:space:]]*.*/, "url: \"" real_urls[u_idx] "\"", $0)
-                    u_idx++
-                }
-            }
-        }
-    }
-    { print }
-    ' "$ACTIVE_CONF" > "${ACTIVE_CONF}.tmp" && mv "${ACTIVE_CONF}.tmp" "$ACTIVE_CONF"
+    # 计数器，用于匹配 URLS 变量中的第 N 个链接
+    idx=0
+    for u in $URLS; do
+        idx=$((idx + 1))
+        
+        # 寻找在 proxy-providers 之后出现的第 idx 个 "url:" 所在的相对行号
+        REL_L=$(sed -n "$((START_L + 1)),\$p" "$ACTIVE_CONF" | grep -n "url:" | sed -n "${idx}p" | cut -d: -f1)
+        
+        if [ -n "$REL_L" ]; then
+            # 计算在文件中的实际行号
+            ABS_L=$((START_L + REL_L))
+            
+            # 精准替换逻辑：
+            # 1. 匹配 url: 及其后面可能存在的空格和引号
+            # 2. 替换原有内容，直到遇到下一个引号、逗号、右花括号或行尾
+            # 这种写法兼容 666yyds 的 {url: ""} 格式和标准的缩进格式 [1, 2]
+            sed -i "${ABS_L}s|\(url:[[:space:]]*[\"']\?\)[^\"',}]*|\1$u|" "$ACTIVE_CONF"
+         #   echo "   [第 $idx 组] 已写入目标行: $ABS_L"
+        else
+         #   echo "   [提示] 配置文件中仅发现 $((idx-1)) 个可覆写槽位，跳过后续链接"
+            break
+        fi
+    done
+  #  echo "✅ 订阅覆写完成"
 fi
-
-#============
+#================================================
 
 # 进程清理与启动
 if [ -f "$WORK_DIR/$OFF_SCRIPT" ]; then
