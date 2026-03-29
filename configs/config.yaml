@@ -163,6 +163,10 @@ dns:
     - +.push.apple.com
 
 # ==================== 代理策略组 ====================
+proxies:
+  - name: "DNS_Hijack"
+    type: dns
+
 proxy-groups:
   - name: 一键连
     icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/mihomo.png"
@@ -195,9 +199,6 @@ proxy-groups:
     hidden: true
     type: select
     proxies: [REJECT-DROP, REJECT, PASS]
-
-  - name: "DNS_Hijack"
-    type: dns
     
   - name: 直接连接
     icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Direct.png"
