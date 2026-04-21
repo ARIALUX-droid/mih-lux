@@ -224,7 +224,7 @@ proxy-groups:
 #-------------------------------------------------------------------
 
 rules:
-  - PROCESS-NAME,cs2.exe,直接连接
+  - PROCESS-NAME,cs2.exe,中国网站
   - RULE-SET,秋风广告规则,广告
   - AND,((DST-PORT,443),(NETWORK,UDP),(NOT,((RULE-SET,中国IP)))),REJECT  # 阻止海外 QUIC
   
