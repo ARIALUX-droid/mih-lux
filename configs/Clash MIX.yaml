@@ -1,0 +1,329 @@
+﻿#version 20260401
+#-----------------------------------------
+mixed-port: 7890
+pid-file: /data/adb/Lux_and/mihctl/mihomo.pid
+mode: rule
+allow-lan: true
+unified-delay: true
+tcp-concurrent: false
+find-process-mode: strict
+log-level: error
+ipv6: true
+external-controller: 0.0.0.0:9090
+external-ui: WebUI
+external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
+
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+    TLS:
+      ports: [443, 8443]
+    QUIC:
+      ports: [443, 8443]
+  skip-domain:
+    - "Mijia Cloud"
+
+tun:
+  enable: true
+  stack: gvisor
+  device: Meta
+  udp-timeout: 300
+  auto-route: true
+  auto-redirect: true
+  auto-detect-interface: true
+  strict-route: false
+  dns-hijack:
+    - any:53
+    - tcp://any:53
+  exclude-uid:
+  exclude-package:
+   - com.xiaomi.mirror
+   - com.xiaomi.mi_connect_service
+   - com.android.settings
+   - com.qti.qcc
+   - com.sec.epdg
+   - com.sec.imsservice
+   - com.tencent.mm           # 微信
+   - com.tencent.mobileqq # QQ
+   - com.eg.android.AlipayGphone # 支付宝
+   - com.unionpay # 云闪付
+   - com.taobao.taobao # 淘宝
+   - com.jingdong.app.mall # 京东
+   - com.xunmeng.pinduoduo # 拼多多
+   - com.ss.android.ugc.aweme # 抖音
+   - com.miui.packageinstaller # 小米应用包安 装程序
+  exclude-interface:
+  exclude-uid-range:
+
+dns:
+  enable: true
+  ipv6: true
+  ipv6-timeout: 300
+  enhanced-mode: fake-ip
+  fake-ip-filter:
+    #- RULE-SET:中国域名
+    - RULE-SET:Fake-IP-Filter
+    - RULE-SET:games-cn
+
+  nameserver-policy:
+    'rule-set:MyDirect,中国域名,games-cn':
+      - 223.5.5.5
+      - 119.29.29.29
+
+    'rule-set:Proxy,Google,AI': 
+      - 8.8.8.8
+      - 1.1.1.1
+
+  nameserver:
+    - 1.1.1.1#代理
+    - 8.8.8.8#代理
+
+  proxy-server-nameserver:
+    - 223.5.5.5#中国网站
+    - 119.29.29.29#中国网站
+
+  proxy-server-nameserver-policy:
+
+#-----------------------------------------------------------------------------
+#机场订阅全局设置
+pp: &pp
+  type: http
+  interval: 21600
+  health-check:
+    enable: true
+    url: https://www.gstatic.com/generate_204
+    interval: 3600
+    timeout: 3000
+    lazy: true
+    expected-status: 204
+
+proxy-providers:
+
+  机场1:
+    <<: *pp
+    url: ""
+    path: ./proxy_providers/机场1.yaml
+
+  机场2:
+    <<: *pp
+    url: ""
+    path: ./proxy_providers/机场2.yaml
+    
+#------------------------------------------------------------------------------
+# templates
+BaseUT: &BaseUT
+  type: url-test
+  interval: 200
+  lazy: true
+  url: "https://www.google.com/generate_204"
+  
+BaseFB: &BaseFB
+  type: fallback
+  interval: 200
+  lazy: true
+  url: "https://www.google.com/generate_204"
+
+#------------------------------------------------------------------------------
+proxy-groups:
+  - name: 代理
+    type: select
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/mihomo.png"
+    proxies:
+      - 机场1
+      - 机场2
+      - 美国自动
+      - 新加坡自动
+      - 全部节点      
+
+  - name: 全部节点
+    type: select
+    icon: "https://gh-proxy.org/https://github.com/Koolson/Qure/raw/master/IconSet/Color/Clubhouse.png"
+    include-all: true
+
+#----------------------------------------------------------------
+
+  - name: 人工智能
+    type: select
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/AI.png"
+    proxies:
+      - 机场1
+      - 美国自动
+      - 新加坡自动
+      - 机场2
+    include-all: true
+    
+  - name: Google
+    type: select
+    icon: "https://gh-proxy.org/https://github.com/Koolson/Qure/raw/master/IconSet/Color/Google_Search.png"
+    proxies:
+      - 机场1
+      - 美国自动
+      - 新加坡自动
+      - 机场2
+      - 全部节点      
+
+  - name: Emby服
+    type: select
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Emby.png"
+    proxies:
+      - 机场1
+      - 机场2
+      - 美国自动
+      - 新加坡自动
+      - 全部节点
+      - DIRECT
+
+  - name: 中国网站
+    type: select
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/China.png"
+    proxies:
+      - DIRECT
+      - 代理
+    
+  - name: 广告
+    type: select
+    icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/anti-ad.png"
+    proxies:
+      - REJECT-DROP
+      - PASS
+      
+  - name: 美国自动
+    <<: *BaseUT
+    include-all: true
+    filter: '美国|USA|美|us|US|United States'
+    hidden: true
+    
+  - name: 新加坡自动
+    <<: *BaseUT
+    include-all: true
+    filter: '新加坡|SG|sg|Singapore'
+    hidden: true
+      
+  - name: 机场1
+    <<: *BaseFB
+    use:
+      - 机场1
+    hidden: true
+      
+  - name: 机场2
+    <<: *BaseUT
+    use:
+      - 机场2
+    hidden: true
+      
+#-------------------------------------------------------------------
+
+rules:
+  - PROCESS-NAME,cs2.exe,直接连接
+  - RULE-SET,秋风广告规则,广告
+  - AND,((DST-PORT,443),(NETWORK,UDP),(NOT,((RULE-SET,中国IP)))),REJECT  # 阻止海外 QUIC
+  
+  - RULE-SET,MyDirect,DIRECT
+  - RULE-SET,Private,DIRECT
+  - RULE-SET,games-cn,中国网站
+  
+  - RULE-SET,AI,人工智能
+  - RULE-SET,Google,Google
+  - RULE-SET,Emby,Emby服
+  
+  - RULE-SET,Proxy,代理
+  - RULE-SET,中国域名,中国网站
+  
+  - RULE-SET,PrivateIP,DIRECT,no-resolve
+  - RULE-SET,ProxyIP,代理,no-resolve
+  - RULE-SET,中国IP,中国网站
+
+  - MATCH,代理
+
+
+#------------------------------------------------------------------------------
+# rule-provider templates
+
+rm: &rm
+  type: http
+  behavior: domain
+  format: mrs
+  interval: 86400
+
+ri: &ri
+  type: http
+  behavior: ipcidr
+  format: mrs
+  interval: 86400
+
+rule-providers:
+
+  秋风广告规则:
+    <<: *rm
+    path: ./rules/AWAvenue-Ads-Rule-Clash.mrs
+    url: https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Clash.mrs
+
+  MyDirect:
+    <<: *rm
+    path: ./rules/MyDirect.mrs
+    url: https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/rule/MyDirect.mrs
+    
+  AI:
+    <<: *rm
+    path: ./rules/AI.mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-ai-!cn.mrs
+
+  games-cn:
+    <<: *rm
+    path: ./rules/games-cn.mrs
+    url: https://gh-proxy.org/https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/games-cn.mrs
+   
+  Google:
+    <<: *rm
+    path: ./rules/Google.mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google.mrs
+
+  Emby:
+    <<: *rm
+    path: ./rules/Emby.mrs
+    url: https://github.com/666OS/rules/raw/release/mihomo/domain/Emby.mrs
+
+  Private:
+    <<: *rm
+    path: ./rules/Private.mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/private.mrs
+    
+  PrivateIP:
+    <<: *ri
+    path: ./rules/PrivateIP.mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/private.mrs
+
+  Fake-IP-Filter:
+    <<: *rm
+    path: ./rules/Fake-IP-Filter.mrs
+    url: https://github.com/DustinWin/ruleset_geodata/raw/refs/heads/mihomo-ruleset/fakeip-filter.mrs
+
+  中国域名:
+    <<: *rm
+    path: ./rules/中国域名.mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.mrs
+
+  中国IP:
+    <<: *ri
+    path: ./rules/中国IP.mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs
+    
+  Proxy:
+    <<: *rm
+    path: ./rules/Proxy.mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/geolocation-!cn.mrs
+    
+  ProxyIP:
+    <<: *ri
+    path: ./rules/ProxyIP.mrs
+    url: https://github.com/666OS/rules/raw/release/mihomo/ip/Proxy.mrs
