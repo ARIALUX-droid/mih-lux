@@ -1,4 +1,4 @@
-﻿# 名称: OneTouch 一键连
+# 名称: OneTouch 一键连
 # 地址: https://github.com/666OS/YYDS
 # 版本: v26.1.0
 # 作者: YYDS666
@@ -36,10 +36,10 @@ FilterEU: &FilterEU '^(?=.*(?i)(奥|比|保|克罗地亚|塞|捷|丹|爱沙|芬|
 FilterOT: &FilterOT '^(?!.*(DIRECT|直接连接|美|港|坡|台|新|日|韩|奥|比|保|克罗地亚|塞|捷|丹|爱沙|芬|法|德|希|匈|爱尔|意|拉|立|卢|马其它|荷|波|葡|罗|斯洛伐|斯洛文|西|瑞|英|🇭🇰|🇼🇸|🇹🇼|🇸🇬|🇯🇵|🇰🇷|🇺🇸|🇬🇧|🇦🇹|🇧🇪|🇨🇿|🇩🇰|🇫🇮|🇫🇷|🇩🇪|🇮🇪|🇮🇹|🇱🇹|🇱🇺|🇳🇱|🇵🇱|🇸🇪|HK|TW|SG|JP|KR|US|GB|CDG|FRA|AMS|MAD|BCN|FCO|MUC|BRU|HKG|TPE|TSA|KHH|SIN|XSP|NRT|HND|KIX|CTS|FUK|JFK|LAX|ORD|ATL|DFW|SFO|MIA|SEA|IAD|LHR|LGW))'
 
 # 策略组代理列表模板 - 预定义的代理节点优先级排序
-SelectAL: &SelectAL   {type: select, proxies: [US-机场1, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 直接连接, REJECT]}
-SelectOne: &SelectOne {type: select, proxies: [一键连, 故障转移, US-机场1, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动,  欧洲自动, 直接连接, REJECT]}
-SelectUS: &SelectUS   {type: select, proxies: [US-机场1, 故障转移, 美国自动, 一键连, 香港自动, 台湾自动, 日本自动, 狮城自动, 欧洲自动, 直接连接, REJECT]}
-SelectDC: &SelectDC   {type: select, proxies: [直接连接, 一键连, US-机场1, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, REJECT]}
+SelectAL: &SelectAL   {type: select, proxies: [机场1, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 机场2, 直接连接, REJECT]}
+SelectOne: &SelectOne {type: select, proxies: [一键连, 故障转移, 机场1, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动,  欧洲自动, 机场2, 直接连接, REJECT]}
+SelectUS: &SelectUS   {type: select, proxies: [机场1, 故障转移, 美国自动, 一键连, 香港自动, 台湾自动, 日本自动, 狮城自动, 欧洲自动, 机场2, 直接连接, REJECT]}
+SelectDC: &SelectDC   {type: select, proxies: [直接连接, 一键连, 机场1, 故障转移, 香港自动, 台湾自动, 日本自动, 狮城自动, 美国自动, 欧洲自动, 机场2, REJECT]}
 
 # ==================== 代理提供者 ====================
 proxy-providers:
@@ -62,7 +62,6 @@ proxy-providers:
 # 基础配置
 mode: rule
 mixed-port: 7890
-pid-file: /data/adb/Lux_and/mihomo/mihomo.pid
 ipv6: true
 allow-lan: true
 unified-delay: true
@@ -75,7 +74,7 @@ keep-alive-idle: 15
 
 # 认证配置
 authentication:
-  - mihomo:yyds666
+  - mihomo:mihomo
 skip-auth-prefixes:
   - 192.168.1.0/24
   - 192.168.31.0/24
@@ -130,16 +129,13 @@ tun:
   exclude-package:
    - com.tencent.mm           # 微信
    - com.tencent.mobileqq # QQ
-   - com.eg.android.AlipayGphone # 支付宝
-   - com.unionpay # 云闪付
-   - com.taobao.taobao # 淘宝
-   - com.jingdong.app.mall # 京东
-   - com.xunmeng.pinduoduo # 拼多多
-   - com.ss.android.ugc.aweme # 抖音
+   # - com.eg.android.AlipayGphone # 支付宝
+   # - com.unionpay # 云闪付
+   # - com.taobao.taobao # 淘宝
+   # - com.jingdong.app.mall # 京东
+   # - com.xunmeng.pinduoduo # 拼多多
+   # - com.ss.android.ugc.aweme # 抖音
    - com.miui.packageinstaller # 小米应用包安 装程序
-   - com.miui.securitycenter # 手机管家
-   - com.android.settings # 系统设置
-   - com.autonavi.minimap # 高德地图
     
 # DNS配置
 dns:
@@ -155,6 +151,7 @@ dns:
     - https://dns.alidns.com/dns-query
     - https://doh.pub/dns-query
   fake-ip-filter:
+    - RULE-SET:Fake-IP-Filter
     - rule-set:Private
     - rule-set:China
     - rule-set:games-cn
@@ -173,7 +170,7 @@ proxy-groups:
 
   - name: 故障转移
     icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/ULB.png"
-    proxies: [US-机场1, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动, 欧洲自动, 直接连接, REJECT]
+    proxies: [机场1, 美国自动, 狮城自动, 香港自动, 台湾自动, 日本自动, 欧洲自动, 机场2, 直接连接, REJECT]
     <<: *BaseFB
 
   - name: 人工智能
@@ -182,14 +179,12 @@ proxy-groups:
     include-all: true
     
   - name: Google
-    icon: "https://cdn.jsdelivr.net/gh/GitMetaio/Surfing@main/app/icon/Google.svg"
+    icon: "https://gh-proxy.org/https://github.com/Koolson/Qure/raw/master/IconSet/Color/Google_Search.png"
     <<: *SelectUS
-    include-all: true
-
+    
   - name: Emby服
     icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/Emby.png"
     <<: *SelectUS
-    include-all: true
 
   - name: 国内流量
     icon: "https://gh-proxy.org/https://raw.githubusercontent.com/ARIALUX-droid/mih-lux/main/icon/China.png"
@@ -231,12 +226,6 @@ proxy-groups:
     include-all: true
     <<: *BaseUT
 
-  - name: US-机场1
-    icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/United_States.png"
-    use: [Proxy1]
-    hidden: true
-    <<: *BaseUT
-
   - name: 美国自动
     icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/United_States.png"
     filter: *FilterUS
@@ -247,6 +236,18 @@ proxy-groups:
     icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/European_Union.png"
     filter: *FilterEU
     include-all: true
+    <<: *BaseUT
+    
+  - name: 机场1
+    icon: "https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Airport.png"
+    use: [Proxy1]
+    hidden: true
+    <<: *BaseFB
+    
+  - name: 机场2
+    icon: "https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Airport.png"
+    use: [Proxy2]
+    hidden: true
     <<: *BaseUT
   
 # ==================== 规则路由 ====================
@@ -297,6 +298,11 @@ rule-providers:
     <<: *BehaviorDN
     path: ./rules/MyDirect.mrs
     url: "https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/rule/MyDirect.mrs"
+    
+  Fake-IP-Filter:
+    <<: *BehaviorDN
+    path: ./rules/Fake-IP-Filter.mrs
+    url: https://github.com/DustinWin/ruleset_geodata/raw/refs/heads/mihomo-ruleset/fakeip-filter.mrs
 
   Private:
     <<: *BehaviorDN
