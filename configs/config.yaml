@@ -8,7 +8,7 @@ allow-lan: true
 unified-delay: true
 tcp-concurrent: false
 find-process-mode: strict
-log-level: warning
+log-level: strict
 ipv6: true
 external-controller: 0.0.0.0:9090
 external-ui: WebUI
