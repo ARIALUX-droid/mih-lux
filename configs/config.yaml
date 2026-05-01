@@ -198,13 +198,11 @@ proxy-groups:
 #-------------------------------------------------------------------
 
 rules:
-  - PROCESS-NAME,cs2.exe,中国网站
-  - RULE-SET,秋风广告规则,广告
-  - AND,((DST-PORT,443),(NETWORK,UDP),(NOT,((RULE-SET,中国IP)))),REJECT  # 阻止海外 QUIC
-  
+  - PROCESS-NAME,cs2.exe,中国网站  
   - RULE-SET,自定义直连,中国网站
   - RULE-SET,自定义代理,代理
   - RULE-SET,Private,DIRECT
+  - RULE-SET,秋风广告规则,广告
   
   - RULE-SET,AI,人工智能
   - RULE-SET,Google,Google
