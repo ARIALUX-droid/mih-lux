@@ -8,7 +8,7 @@ allow-lan: true
 unified-delay: true
 tcp-concurrent: false
 find-process-mode: strict
-log-level: error
+log-level: silent
 ipv6: true
 external-controller: 0.0.0.0:9090
 external-ui: WebUI
@@ -46,27 +46,13 @@ tun:
   dns-hijack: 
     - any:53
     - tcp://any:53
-  exclude-uid:
   exclude-package:
-   - com.xiaomi.mirror
-   - com.xiaomi.mi_connect_service
-   - com.android.settings
-   - com.qti.qcc
-   - com.sec.epdg
-   - com.sec.imsservice
-   - com.tencent.mm           # 微信
-   - com.tencent.mobileqq # QQ
-   - com.eg.android.AlipayGphone # 支付宝
-   - com.unionpay # 云闪付
-   - com.taobao.taobao # 淘宝
-   - com.jingdong.app.mall # 京东
-   - com.xunmeng.pinduoduo # 拼多多
-   - com.ss.android.ugc.aweme # 抖音
-   - com.wisedu.cpdaily    #今日校园
-   - com.miui.packageinstaller # 小米应用包安 装程序
-  exclude-interface:
-  exclude-uid-range:
-
+    - com.android.settings
+    - com.qti.qcc
+    - com.sec.epdg
+    - com.sec.imsservice
+    - com.miui.packageinstaller
+    
 dns:
   enable: true
   ipv6: true
@@ -75,14 +61,15 @@ dns:
   fake-ip-filter:
     #- RULE-SET:中国域名
     - RULE-SET:Fake-IP-Filter
-    - RULE-SET:games-cn
+    - RULE-SET:自定义直连
+    - RULE-SET:Private
 
   nameserver-policy:
-    'rule-set:MyDirect,中国域名,games-cn':
+    'rule-set:自定义直连,中国域名,Private':
       - 223.5.5.5
       - 119.29.29.29
 
-    'rule-set:Google,AI': 
+    'rule-set:自定义代理,AI,Google': 
       - 8.8.8.8
       - 1.1.1.1
 
@@ -113,12 +100,12 @@ proxy-providers:
 
   机场1:
     <<: *pp
-    url: "订阅链接"
+    url: '订阅链接'
     path: ./proxy_providers/机场1.yaml
 
   机场2:
     <<: *pp
-    url: "订阅链接"
+    url: '订阅链接'
     path: ./proxy_providers/机场2.yaml
     
 #------------------------------------------------------------------------------
@@ -137,47 +124,45 @@ BaseFB: &BaseFB
 
 #------------------------------------------------------------------------------
 proxy-groups:
+
   - name: 代理
     type: select
+    include-all: true
     proxies:
-      - 机场1
-      - 机场2
+      - 手动选择
       - 美国自动
       - 新加坡自动
-      - 全部节点      
-
-  - name: 全部节点
+      - 香港自动   
+     
+  - name: 手动选择
     type: select
     include-all: true
-
+    filter: '美国|USA|美國|us|US|United States'
 #----------------------------------------------------------------
 
   - name: 人工智能
     type: select
-    proxies:
-      - 机场1
-      - 美国自动
-      - 新加坡自动
-      - 机场2
     include-all: true
-    
+    proxies:
+      - 手动选择
+      
   - name: Google
     type: select
     proxies:
-      - 机场1
+      - 手动选择
+      - 代理
       - 美国自动
       - 新加坡自动
-      - 机场2
-      - 全部节点      
+      - 香港自动   
 
   - name: Emby服
     type: select
     proxies:
-      - 机场1
-      - 机场2
+      - 手动选择
+      - 代理
       - 美国自动
       - 新加坡自动
-      - 全部节点
+      - 香港自动       
       - DIRECT
 
   - name: 中国网站
@@ -203,17 +188,11 @@ proxy-groups:
     include-all: true
     filter: '新加坡|SG|sg|Singapore'
     hidden: true
-      
-  - name: 机场1
-    <<: *BaseFB
-    use:
-      - 机场1
-    hidden: true
-      
-  - name: 机场2
+    
+  - name: 香港自动
     <<: *BaseUT
-    use:
-      - 机场2
+    include-all: true
+    filter: '香港|HK|hk|Hong Kong'
     hidden: true
       
 #-------------------------------------------------------------------
@@ -221,10 +200,11 @@ proxy-groups:
 rules:
   - PROCESS-NAME,cs2.exe,中国网站
   - RULE-SET,秋风广告规则,广告
+  - AND,((DST-PORT,443),(NETWORK,UDP),(NOT,((RULE-SET,中国IP)))),REJECT  # 阻止海外 QUIC
   
-  - RULE-SET,MyDirect,DIRECT
+  - RULE-SET,自定义直连,中国网站
+  - RULE-SET,自定义代理,代理
   - RULE-SET,Private,DIRECT
-  - RULE-SET,games-cn,中国网站
   
   - RULE-SET,AI,人工智能
   - RULE-SET,Google,Google
@@ -251,6 +231,12 @@ ri: &ri
   behavior: ipcidr
   format: mrs
   interval: 86400
+  
+rm_yaml: &rm_yaml
+  type: http
+  behavior: domain
+  format: yaml
+  interval: 86400
 
 rule-providers:
 
@@ -259,21 +245,21 @@ rule-providers:
     path: ./rules/AWAvenue-Ads-Rule-Clash.mrs
     url: https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Clash.mrs
 
-  MyDirect:
-    <<: *rm
-    path: ./rules/MyDirect.mrs
-    url: https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/rule/MyDirect.mrs
+  自定义直连:
+    <<: *rm_yaml
+    path: ./rules/自定义直连.mrs
+    url: https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/rule/自定义直连.yaml
+    
+  自定义代理:
+    <<: *rm_yaml
+    path: ./rules/自定义直连.mrs
+    url: https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/rule/自定义代理.yaml
     
   AI:
     <<: *rm
     path: ./rules/AI.mrs
     url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-ai-!cn.mrs
 
-  games-cn:
-    <<: *rm
-    path: ./rules/games-cn.mrs
-    url: https://gh-proxy.org/https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/games-cn.mrs
-   
   Google:
     <<: *rm
     path: ./rules/Google.mrs
