@@ -5,11 +5,13 @@ tproxy-port: 9898
 redir-port: 9797
 mode: rule
 allow-lan: true
-unified-delay: true
+unified-delay: false
 tcp-concurrent: false
 find-process-mode: strict
 log-level: silent
 ipv6: true
+keep-alive-interval: 30
+keep-alive-idle: 15
 external-controller: 0.0.0.0:9090
 external-ui: WebUI
 external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
@@ -35,7 +37,7 @@ sniffer:
     - "Mijia Cloud"
 
 tun:
-  enable: true
+  enable: false
   stack: gvisor
   device: Meta
   udp-timeout: 300
@@ -83,7 +85,7 @@ dns:
 
   proxy-server-nameserver-policy:
 
-#-----------------------------------------------------------------------------
+#------------------------------------------------
 #机场订阅全局设置
 pp: &pp
   type: http
@@ -95,6 +97,9 @@ pp: &pp
     timeout: 3000
     lazy: true
     expected-status: 204
+  headers:
+    User-Agent: "ClashMetaForAndroid/2.11.26"
+    
 
 proxy-providers:
 
@@ -108,21 +113,7 @@ proxy-providers:
     url: '订阅链接'
     path: ./proxy_providers/机场2.yaml
     
-#------------------------------------------------------------------------------
-# templates
-BaseUT: &BaseUT
-  type: url-test
-  interval: 200
-  lazy: true
-  url: "https://www.google.com/generate_204"
-  
-BaseFB: &BaseFB
-  type: fallback
-  interval: 200
-  lazy: true
-  url: "https://www.google.com/generate_204"
-
-#------------------------------------------------------------------------------
+#------------------------------------------------
 proxy-groups:
 
   - name: 代理
@@ -130,39 +121,46 @@ proxy-groups:
     include-all: true
     proxies:
       - 手动选择
-      - 美国自动
-      - 新加坡自动
-      - 香港自动   
+      - 自动切换
      
   - name: 手动选择
     type: select
     include-all: true
     filter: '美国|USA|美國|us|US|United States'
-#----------------------------------------------------------------
+    
+  - name: 自动切换
+    type: fallback
+    include-all: true
+    filter: '美国|USA|美國|us|US|United States'
+    interval: 300
+    lazy: true
+    timeout: 3000
+    max-failed-times: 5
+    expected-status: 204
+    url: 'https://www.gstatic.com/generate_204'
+
+#------------------------------------------------
 
   - name: 人工智能
     type: select
     include-all: true
     proxies:
       - 手动选择
+      - 自动切换
       
   - name: Google
     type: select
     proxies:
       - 手动选择
       - 代理
-      - 美国自动
-      - 新加坡自动
-      - 香港自动   
+      - 自动切换
 
   - name: Emby服
     type: select
     proxies:
       - 手动选择
       - 代理
-      - 美国自动
-      - 新加坡自动
-      - 香港自动       
+      - 自动切换
       - DIRECT
 
   - name: 中国网站
@@ -176,48 +174,28 @@ proxy-groups:
     proxies:
       - REJECT-DROP
       - PASS
-      
-  - name: 美国自动
-    <<: *BaseUT
-    include-all: true
-    filter: '美国|USA|美|us|US|United States'
-    hidden: true
-    
-  - name: 新加坡自动
-    <<: *BaseUT
-    include-all: true
-    filter: '新加坡|SG|sg|Singapore'
-    hidden: true
-    
-  - name: 香港自动
-    <<: *BaseUT
-    include-all: true
-    filter: '香港|HK|hk|Hong Kong'
-    hidden: true
-      
+           
 #-------------------------------------------------------------------
 
 rules:
-  - PROCESS-NAME,cs2.exe,中国网站  
-  - RULE-SET,自定义直连,中国网站
-  - RULE-SET,自定义代理,代理
-  - RULE-SET,Private,DIRECT
-  - RULE-SET,秋风广告规则,广告
+  - PROCESS-NAME,cs2.exe,中国网站
   
+  - RULE-SET,自定义代理,代理
+  - RULE-SET,自定义直连,中国网站
+  - RULE-SET,Private,DIRECT
+  - RULE-SET,PrivateIP,DIRECT,no-resolve
+
+  - RULE-SET,秋风广告规则,广告
+  - RULE-SET,中国域名,中国网站
+  - RULE-SET,中国IP,中国网站
+
   - RULE-SET,AI,人工智能
   - RULE-SET,Google,Google
   - RULE-SET,Emby,Emby服
-  
-  - RULE-SET,PrivateIP,DIRECT,no-resolve
-  - RULE-SET,中国域名,中国网站  
-  - RULE-SET,中国IP,中国网站
 
   - MATCH,代理
 
-
 #------------------------------------------------------------------------------
-# rule-provider templates
-
 rm: &rm
   type: http
   behavior: domain
@@ -245,12 +223,12 @@ rule-providers:
 
   自定义直连:
     <<: *rm_yaml
-    path: ./rules/自定义直连.mrs
+    path: ./rules/自定义直连.yaml
     url: https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/rule/自定义直连.yaml
     
   自定义代理:
     <<: *rm_yaml
-    path: ./rules/自定义直连.mrs
+    path: ./rules/自定义代理.yaml
     url: https://github.com/ARIALUX-droid/mih-lux/raw/refs/heads/main/rule/自定义代理.yaml
     
   AI:
@@ -292,4 +270,3 @@ rule-providers:
     <<: *ri
     path: ./rules/中国IP.mrs
     url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs
-pid-file: /data/adb/Lux_and/mihomo/日志/mihomo.pid
