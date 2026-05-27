@@ -1,10 +1,21 @@
-Payload:
+payload:
   # PC 游戏进程
   - PROCESS-NAME,cs2.exe
 
   # Win 系统更新
-  - +.windowsupdate.com
+  - DOMAIN-SUFFIX,windowsupdate.com
   
   # Steam 游戏下载
   - DOMAIN,steamcdn-a.akamaihd.net
   - DOMAIN-SUFFIX,steamserver.net
+  - DOMAIN-SUFFIX,steamcontent.com
+  - DOMAIN-SUFFIX,steamusercontent.com
+  - DOMAIN,dl.steam.clngaa.com
+  - DOMAIN,dl.steam.ksyna.com
+  - DOMAIN,steampipe.steamcontent.tnkjmec.com
+  - DOMAIN,st.dl.bscstorage.net
+  - DOMAIN,st.dl.eccdnx.com
+  - DOMAIN,st.dl.pinyuncloud.com
+  - DOMAIN,steampowered.com.8686c.com
+  - DOMAIN,steamstatic.com.8686c.com
+  - DOMAIN,wmsjsteam.com
