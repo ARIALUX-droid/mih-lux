@@ -1,4 +1,4 @@
-payload:
+Payload:
   # PC 游戏进程
   - PROCESS-NAME,cs2.exe
 
@@ -6,5 +6,5 @@ payload:
   - +.windowsupdate.com
   
   # Steam 游戏下载
-  - steamcdn-a.akamaihd.net
-  - steamserver.net
+  - DOMAIN,steamcdn-a.akamaihd.net
+  - DOMAIN-SUFFIX,steamserver.net
